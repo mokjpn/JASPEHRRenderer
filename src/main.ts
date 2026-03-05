@@ -1,4 +1,4 @@
-import "./style.css";
+﻿import "./style.css";
 import * as fhirpath from "fhirpath";
 import { buildQuestionnaireResponse, type Answer, type Coding, type ItemModel, type Primitive, type RenderState } from "./buildQuestionnaireResponse";
 import sampleQuestionnaireText from "./sample-questionnaire.json?raw";
@@ -59,7 +59,8 @@ const EXT = {
 const LS_KEYS = {
   questionnaire: "jaspehr.q",
   state: "jaspehr.state",
-  autosave: "jaspehr.autosave"
+  autosave: "jaspehr.autosave",
+  source: "jaspehr.source"
 };
 
 let sampleText = "";
@@ -88,6 +89,7 @@ let state: RenderState = {};
 let errors: ValidationErr[] = [];
 let schemaErrors: ValidationErr[] = [];
 let autosave = localStorage.getItem(LS_KEYS.autosave) !== "off";
+let questionnaireSource: "bundled" | "custom" = "bundled";
 let tabNavigationInProgress = false;
 
 document.addEventListener("keydown", (ev) => {
@@ -97,7 +99,6 @@ document.addEventListener("keydown", (ev) => {
 document.addEventListener("keyup", (ev) => {
   if (ev.key === "Tab") tabNavigationInProgress = false;
 });
-
 function getExt(item: any, token: string): any | undefined {
   return item?.extension?.find((e: any) => typeof e.url === "string" && e.url.includes(token));
 }
@@ -393,6 +394,17 @@ function findRawItem(items: any[], linkId: string): any | null {
   return null;
 }
 
+function rerenderCenterPreservingFocus() {
+  const active = document.activeElement as HTMLElement | null;
+  const focusKey = active?.dataset?.focusKey;
+
+  renderCenter();
+
+  if (!focusKey) return;
+  const nodes = Array.from(center.querySelectorAll<HTMLElement>("[data-focus-key]"));
+  const target = nodes.find((n) => n.dataset.focusKey === focusKey);
+  target?.focus();
+}
 function renderInput(container: HTMLElement, n: AppItemModel, enabled: boolean) {
   const id = `item-${n.linkId}`;
   const wrap = document.createElement("div");
@@ -411,15 +423,20 @@ function renderInput(container: HTMLElement, n: AppItemModel, enabled: boolean) 
 
   const value = state[n.linkId];
 
-  const updateState = (next: any, rerenderCenter: boolean) => {
+  const updateState = (next: any, rerenderCenter: boolean, mode: "soft" | "hard" = "hard") => {
     state[n.linkId] = next;
+    if (mode === "soft") {
+      persistIfNeeded();
+      return;
+    }
     recalcCalculated(modelRoot);
-    if (rerenderCenter) renderCenter();
+    errors = [...schemaErrors, ...validateInputs(modelRoot)];
+    if (rerenderCenter) rerenderCenterPreservingFocus();
     renderRight();
     persistIfNeeded();
   };
 
-  const onChange = (next: any) => updateState(next, true);
+  const onChange = (next: any) => updateState(next, true, "hard");
 
   if (n.type === "choice") {
     if (n.control === "radio") {
@@ -431,6 +448,7 @@ function renderInput(container: HTMLElement, n: AppItemModel, enabled: boolean) 
         inp.name = n.linkId;
         inp.disabled = !enabled || !!n.readOnly;
         inp.checked = codingEq(value as Coding, opt);
+        inp.dataset.focusKey = n.linkId;
         inp.onchange = () => onChange(opt);
         l.append(inp, document.createTextNode(" " + getOptionLabel(opt)));
         wrap.appendChild(l);
@@ -444,6 +462,7 @@ function renderInput(container: HTMLElement, n: AppItemModel, enabled: boolean) 
         inp.type = "checkbox";
         inp.disabled = !enabled || !!n.readOnly;
         inp.checked = current.some((c) => codingEq(c, opt));
+        inp.dataset.focusKey = n.linkId;
         inp.onchange = () => {
           const next = current.filter((c) => !codingEq(c, opt));
           if (inp.checked) next.push(opt);
@@ -466,6 +485,7 @@ function renderInput(container: HTMLElement, n: AppItemModel, enabled: boolean) 
         if (codingEq(value as Coding, opt)) o.selected = true;
         sel.appendChild(o);
       });
+      sel.dataset.focusKey = n.linkId;
       sel.onchange = () => {
         if (sel.value === "") onChange(null);
         else onChange(n.options[Number(sel.value)]);
@@ -477,6 +497,7 @@ function renderInput(container: HTMLElement, n: AppItemModel, enabled: boolean) 
     inp.type = "checkbox";
     inp.checked = !!value;
     inp.disabled = !enabled || !!n.readOnly;
+    inp.dataset.focusKey = n.linkId;
     inp.onchange = () => onChange(inp.checked);
     wrap.appendChild(inp);
   } else if (n.type !== "group" && n.type !== "display") {
@@ -500,9 +521,10 @@ function renderInput(container: HTMLElement, n: AppItemModel, enabled: boolean) 
     const textInput = inp as HTMLInputElement | HTMLTextAreaElement;
     let composing = false;
     const useChangeEvent = n.type === "date" || n.type === "dateTime" || n.type === "time";
-    const commitSoft = () => updateState(textInput.value, false);
-    const commitHard = () => updateState(textInput.value, true);
+    const commitSoft = () => updateState(textInput.value, false, "soft");
+    const commitHard = () => updateState(textInput.value, true, "hard");
 
+    textInput.dataset.focusKey = n.linkId;
     textInput.disabled = !enabled || !!n.readOnly;
     textInput.value = value == null ? "" : String(value);
     textInput.addEventListener("compositionstart", () => {
@@ -522,7 +544,9 @@ function renderInput(container: HTMLElement, n: AppItemModel, enabled: boolean) 
       });
       textInput.addEventListener("blur", () => {
         if (tabNavigationInProgress) {
-          commitSoft();
+          setTimeout(() => {
+            commitHard();
+          }, 0);
           return;
         }
         commitHard();
@@ -639,6 +663,8 @@ function renderLeft() {
   loadBtn.onclick = () => {
     try {
       questionnaire = JSON.parse(ta.value);
+      const isBundledFromEditor = ta.value === sampleText;
+      questionnaireSource = isBundledFromEditor ? "bundled" : "custom";
       modelRoot = buildModel(questionnaire.item || []);
       schemaErrors = validateQuestionnaireRules(modelRoot);
       state = {};
@@ -664,6 +690,7 @@ function renderLeft() {
   const loadSample = document.createElement("button");
   loadSample.textContent = "サンプル";
   loadSample.onclick = () => {
+    questionnaireSource = "bundled";
     ta.value = sampleText;
   };
   row.appendChild(loadSample);
@@ -780,6 +807,7 @@ function persistIfNeeded() {
   if (!autosave || !questionnaire) return;
   localStorage.setItem(LS_KEYS.questionnaire, JSON.stringify(questionnaire));
   localStorage.setItem(LS_KEYS.state, JSON.stringify(state));
+  localStorage.setItem(LS_KEYS.source, questionnaireSource);
 }
 
 function render() {
@@ -795,15 +823,38 @@ function boot() {
 }
 
 function doBoot() {
+  let bundledSample: any = { resourceType: "Questionnaire", status: "active", item: [] };
+  try {
+    bundledSample = JSON.parse(sampleText);
+  } catch {
+    // fallback to minimal questionnaire
+  }
+
   const savedQ = localStorage.getItem(LS_KEYS.questionnaire);
   const savedSt = localStorage.getItem(LS_KEYS.state);
+  const savedSource = localStorage.getItem(LS_KEYS.source);
 
   if (savedQ) {
     try {
-      questionnaire = JSON.parse(savedQ);
+      const savedQuestionnaire = JSON.parse(savedQ);
+      const sameBundledIdentity =
+        savedQuestionnaire?.resourceType === "Questionnaire" &&
+        bundledSample?.resourceType === "Questionnaire" &&
+        savedQuestionnaire?.id === bundledSample?.id &&
+        savedQuestionnaire?.url === bundledSample?.url;
+
+      const useBundledSample = sameBundledIdentity;
+
+      questionnaire = useBundledSample ? bundledSample : savedQuestionnaire;
+      questionnaireSource = useBundledSample ? "bundled" : "custom";
       modelRoot = buildModel(questionnaire.item || []);
       schemaErrors = validateQuestionnaireRules(modelRoot);
+
       state = savedSt ? JSON.parse(savedSt) : {};
+      if (useBundledSample && Object.keys(state).length === 0) {
+        assignInitialValues(modelRoot);
+      }
+
       recalcCalculated(modelRoot);
       render();
       return;
@@ -812,7 +863,8 @@ function doBoot() {
     }
   }
 
-  questionnaire = JSON.parse(sampleText);
+  questionnaire = bundledSample;
+  questionnaireSource = "bundled";
   modelRoot = buildModel(questionnaire.item || []);
   schemaErrors = validateQuestionnaireRules(modelRoot);
   state = {};
@@ -820,6 +872,18 @@ function doBoot() {
   recalcCalculated(modelRoot);
   render();
 }
-
 boot();
+
+
+
+
+
+
+
+
+
+
+
+
+
 
