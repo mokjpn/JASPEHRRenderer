@@ -70,7 +70,7 @@ if (!app) throw new Error("app not found");
 
 app.innerHTML = `
   <div class="app">
-    <header class="header"><h1>FHIR SDC + JASPEHR v0.5.11 Questionnaire Renderer</h1></header>
+    <header class="header"><h1>FHIR SDC + JASPEHR Questionnaire Renderer</h1></header>
     <main class="layout">
       <section class="panel" id="left"></section>
       <section class="panel" id="center"></section>
