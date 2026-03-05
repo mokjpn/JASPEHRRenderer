@@ -1,0 +1,138 @@
+{
+  "resourceType": "Questionnaire",
+  "id": "jaspehr-demo-001",
+  "url": "http://example.org/fhir/Questionnaire/jaspehr-demo-001",
+  "status": "active",
+  "title": "JASPEHR SDC Demo",
+  "item": [
+    {
+      "linkId": "g1",
+      "text": "患者情報",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "gender",
+          "text": "性別",
+          "type": "choice",
+          "required": true,
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/questionnaire-itemControl",
+              "valueCodeableConcept": {
+                "coding": [
+                  {
+                    "system": "http://hl7.org/fhir/questionnaire-item-control",
+                    "code": "radio-button"
+                  }
+                ]
+              }
+            }
+          ],
+          "answerOption": [
+            {
+              "valueCoding": {
+                "system": "http://example.org/gender",
+                "code": "male",
+                "display": "男性"
+              }
+            },
+            {
+              "valueCoding": {
+                "system": "http://example.org/gender",
+                "code": "female",
+                "display": "女性"
+              },
+              "initialSelected": true
+            }
+          ]
+        },
+        {
+          "linkId": "pregnancy_week",
+          "text": "妊娠週数",
+          "type": "integer",
+          "enableWhen": [
+            {
+              "question": "gender",
+              "operator": "=",
+              "answerCoding": {
+                "system": "http://example.org/gender",
+                "code": "female"
+              }
+            }
+          ],
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/questionnaire-calculatedExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "%age / 2"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "age",
+          "text": "年齢",
+          "type": "integer",
+          "required": true,
+          "minValue": {
+            "value": 0
+          },
+          "maxValue": {
+            "value": 130
+          },
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "30"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "kana_name",
+          "text": "カナ氏名（半角英数のみ）",
+          "type": "string",
+          "required": true,
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/regex",
+              "valueString": "^[A-Za-z0-9]+$"
+            }
+          ]
+        },
+        {
+          "linkId": "score",
+          "text": "BMIスコア(自動計算例)",
+          "type": "decimal",
+          "readOnly": true,
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/questionnaire-calculatedExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "%age * 0.4"
+              }
+            }
+          ]
+        },
+        {
+          "linkId": "visit_date",
+          "text": "受診日",
+          "type": "date",
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/questionnaire-initialExpression",
+              "valueExpression": {
+                "language": "text/fhirpath",
+                "expression": "today()"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

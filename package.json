@@ -1,0 +1,19 @@
+﻿{
+  "name": "jaspehr2html",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "build:standalone": "npm run build && node scripts/make-standalone.mjs",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "fhirpath": "^4.8.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2",
+    "vite": "^4.5.5"
+  }
+}
