@@ -42,16 +42,14 @@ This generates:
 - `dist/index.html` (normal Vite output)
 - `dist/index.standalone.html` (single-file, `file://` direct-open friendly)
 
+Use it by opening `dist/index.standalone.html` directly in your browser.
+`dist/index.standalone.html` をブラウザで直接開くと、そのまま利用できます。
+
 `index.standalone.html` inlines JS/CSS, so it avoids most `file://` CORS fetch issues.
 `index.standalone.html` は JS/CSS を内包するため、`file://` 実行時の CORS/fetch 問題を回避しやすくなります。
-
-## GitHub publishing policy / GitHub公開方針
-This repository is intended to publish source code only.
-このリポジトリはソース公開を前提としています。
-
-- Ignore `node_modules/` and build artifacts (`dist/`) via `.gitignore`.
-- Users clone the repo and run `npm install` + `npm run build:standalone` locally.
 
 ## Notes / 注意
 - If you need stable behavior across browsers, prefer `npm run preview` (`http://localhost`) over `file://`.
 - `file://` behavior can differ by browser security policy.
+- ブラウザ間でより安定した動作が必要な場合は、`file://` 直開きより `npm run preview`（`http://localhost`）を推奨します。
+- `file://` 実行時の挙動は、ブラウザのセキュリティポリシーによって異なる場合があります。
