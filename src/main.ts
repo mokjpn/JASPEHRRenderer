@@ -154,8 +154,25 @@ function buildModel(items: any[] = [], parent = ""): AppItemModel[] {
   });
 }
 
-function validateQuestionnaireRules(nodes: AppItemModel[], out: ValidationErr[] = []): ValidationErr[] {
+function validateQuestionnaireRules(
+  nodes: AppItemModel[],
+  out: ValidationErr[] = [],
+  seenLinkIds = new Set<string>(),
+  reportedDuplicateLinkIds = new Set<string>()
+): ValidationErr[] {
   for (const n of nodes) {
+    if (seenLinkIds.has(n.linkId)) {
+      if (!reportedDuplicateLinkIds.has(n.linkId)) {
+        out.push({
+          linkId: n.linkId,
+          message: "jsp-unique-linkId: Questionnaire内で linkId は一意である必要があります。"
+        });
+        reportedDuplicateLinkIds.add(n.linkId);
+      }
+    } else {
+      seenLinkIds.add(n.linkId);
+    }
+
     if (n.type === "choice" && !n.control) {
       out.push({ linkId: n.linkId, message: "jsp-6: choice には itemControl が必須です。" });
     }
@@ -193,7 +210,7 @@ function validateQuestionnaireRules(nodes: AppItemModel[], out: ValidationErr[] 
         }
       }
     }
-    validateQuestionnaireRules(n.children, out);
+    validateQuestionnaireRules(n.children, out, seenLinkIds, reportedDuplicateLinkIds);
   }
   return out;
 }
@@ -724,7 +741,16 @@ function renderCenter() {
     return;
   }
 
-  errors = [...schemaErrors, ...validateInputs(modelRoot)];
+  const hasDuplicateLinkId = schemaErrors.some((e) => e.message.startsWith("jsp-unique-linkId:"));
+  errors = hasDuplicateLinkId ? [...schemaErrors] : [...schemaErrors, ...validateInputs(modelRoot)];
+  if (hasDuplicateLinkId) {
+    const p = document.createElement("div");
+    p.className = "error";
+    p.textContent = "規約エラー: linkId が重複しているためフォーム描画を停止しました。Questionnaire を修正してください。";
+    center.appendChild(p);
+    return;
+  }
+
   for (const n of modelRoot) renderNode(center, n);
 
   const row = document.createElement("div");
@@ -873,7 +899,6 @@ function doBoot() {
   render();
 }
 boot();
-
 
 
 
