@@ -50,6 +50,12 @@
           "linkId": "pregnancy_week",
           "text": "妊娠週数",
           "type": "integer",
+          "minValue": {
+            "value": 0
+          },
+          "maxValue": {
+            "value": 45
+          },
           "enableWhen": [
             {
               "question": "gender",
@@ -57,15 +63,6 @@
               "answerCoding": {
                 "system": "http://example.org/gender",
                 "code": "female"
-              }
-            }
-          ],
-          "extension": [
-            {
-              "url": "http://hl7.org/fhir/StructureDefinition/questionnaire-calculatedExpression",
-              "valueExpression": {
-                "language": "text/fhirpath",
-                "expression": "%age / 2"
               }
             }
           ]
@@ -160,3 +157,4 @@
     }
   ]
 }
+
