@@ -1,0 +1,126 @@
+{
+  "resourceType": "Questionnaire",
+  "id": "synthetic-baseline-bp",
+  "status": "draft",
+  "title": "Baseline blood-pressure study / 血圧研究・ベースライン",
+  "description": "Original synthetic demonstration; no real patient data. Experimental authoring annotations, not standard JASPEHR or a finalized FHIR extension.",
+  "item": [
+    {
+      "linkId": "identifiers",
+      "text": "Study and participant / 研究・参加者",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "study-id",
+          "text": "Study identifier / 研究ID",
+          "type": "string",
+          "required": true,
+          "initial": [
+            {
+              "valueString": "SYN-BP-001"
+            }
+          ]
+        },
+        {
+          "linkId": "participant-id",
+          "text": "Synthetic participant identifier / 架空参加者ID",
+          "type": "string",
+          "required": true,
+          "initial": [
+            {
+              "valueString": "DEMO-001"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "linkId": "demographics",
+      "text": "Demographics / 人口統計",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "birth-date",
+          "text": "Birth date / 生年月日",
+          "type": "date",
+          "required": true
+        },
+        {
+          "linkId": "reference-date",
+          "text": "Study reference date / 研究基準日",
+          "type": "date",
+          "required": true
+        },
+        {
+          "linkId": "sex",
+          "text": "Sex as collected / 性別",
+          "type": "string"
+        }
+      ],
+      "mappingIntent": {
+        "inputs": [
+          {
+            "linkId": "birth-date",
+            "role": "birthDate"
+          },
+          {
+            "linkId": "reference-date",
+            "role": "referenceDate"
+          }
+        ],
+        "output": {
+          "sdtmTarget": "AGE.AGE"
+        },
+        "intent": "生年月日と研究基準日から、基準日時点の年齢を年単位で導出する",
+        "derivationDescription": "referenceDateからbirthDateを差し引いた期間を、基準日時点の年齢として年単位で表す。満年齢か小数年齢か、部分日付・閏日・丸め等の扱いは下流仕様で明示的に決定する。"
+      }
+    },
+    {
+      "linkId": "vitals",
+      "text": "Seated baseline vitals / 座位バイタル",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "systolic-bp",
+          "text": "Systolic blood pressure (mmHg) / 収縮期血圧",
+          "type": "integer",
+          "required": true,
+          "minValue": {
+            "value": 40
+          },
+          "maxValue": {
+            "value": 300
+          },
+          "sdtmTarget": "SYSBP.VSORRES"
+        },
+        {
+          "linkId": "diastolic-bp",
+          "text": "Diastolic blood pressure (mmHg) / 拡張期血圧",
+          "type": "integer",
+          "minValue": {
+            "value": 20
+          },
+          "maxValue": {
+            "value": 200
+          }
+        },
+        {
+          "linkId": "pulse",
+          "text": "Pulse (beats/min) / 脈拍",
+          "type": "integer",
+          "minValue": {
+            "value": 20
+          },
+          "maxValue": {
+            "value": 250
+          }
+        },
+        {
+          "linkId": "notes",
+          "text": "Measurement notes / 測定メモ",
+          "type": "text"
+        }
+      ]
+    }
+  ]
+}

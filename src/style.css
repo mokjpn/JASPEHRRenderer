@@ -208,3 +208,9 @@ pre {
 
 
 
+
+.crf-controls { margin-top: 12px; }
+.crf-dialog { width: min(1000px, 96vw); height: 92vh; border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+.crf-dialog::backdrop { background: #20354899; }
+.crf-dialog iframe { width: 100%; height: calc(100% - 110px); border: 1px solid var(--line); }
+.crf-dialog p { font-size: .85rem; }

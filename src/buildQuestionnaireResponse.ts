@@ -99,3 +99,111 @@ export function buildQuestionnaireResponse(
     item: walk(modelRoot)
   };
 }
+
+// Revision 4 custom authoring annotations. These values never enter expression evaluation.
+export const baselineDemo = {
+  resourceType: "Questionnaire", id: "synthetic-baseline-bp", status: "draft",
+  title: "Baseline blood-pressure study / 血圧研究・ベースライン",
+  description: "Original synthetic demonstration; no real patient data. Experimental authoring annotations, not standard JASPEHR or a finalized FHIR extension.",
+  item: [
+    { linkId: "identifiers", text: "Study and participant / 研究・参加者", type: "group", item: [
+      { linkId: "study-id", text: "Study identifier / 研究ID", type: "string", required: true, initial: [{ valueString: "SYN-BP-001" }] },
+      { linkId: "participant-id", text: "Synthetic participant identifier / 架空参加者ID", type: "string", required: true, initial: [{ valueString: "DEMO-001" }] }
+    ] },
+    { linkId: "demographics", text: "Demographics / 人口統計", type: "group", item: [
+      { linkId: "birth-date", text: "Birth date / 生年月日", type: "date", required: true },
+      { linkId: "reference-date", text: "Study reference date / 研究基準日", type: "date", required: true },
+      { linkId: "sex", text: "Sex as collected / 性別", type: "string" }
+    ], mappingIntent: {
+      inputs: [{ linkId: "birth-date", role: "birthDate" }, { linkId: "reference-date", role: "referenceDate" }],
+      output: { sdtmTarget: "AGE.AGE" },
+      intent: "生年月日と研究基準日から、基準日時点の年齢を年単位で導出する",
+      derivationDescription: "referenceDateからbirthDateを差し引いた期間を、基準日時点の年齢として年単位で表す。満年齢か小数年齢か、部分日付・閏日・丸め等の扱いは下流仕様で明示的に決定する。"
+    } },
+    { linkId: "vitals", text: "Seated baseline vitals / 座位バイタル", type: "group", item: [
+      { linkId: "systolic-bp", text: "Systolic blood pressure (mmHg) / 収縮期血圧", type: "integer", required: true, minValue: { value: 40 }, maxValue: { value: 300 }, sdtmTarget: "SYSBP.VSORRES" },
+      { linkId: "diastolic-bp", text: "Diastolic blood pressure (mmHg) / 拡張期血圧", type: "integer", minValue: { value: 20 }, maxValue: { value: 200 } },
+      { linkId: "pulse", text: "Pulse (beats/min) / 脈拍", type: "integer", minValue: { value: 20 }, maxValue: { value: 250 } },
+      { linkId: "notes", text: "Measurement notes / 測定メモ", type: "text" }
+    ] }
+  ]
+};
+
+type AuthoringNode = Record<string, any>;
+export type Annotation = { linkId: string; kind: "Direct" | "Derived"; text: string; raw: unknown };
+export type AnnotationResult = { annotations: Annotation[]; warnings: string[]; raw: unknown };
+const literal = (v: unknown): string => typeof v === "string" ? v : JSON.stringify(v) ?? "(missing)";
+export function exactExtension(item: AuthoringNode, canonical: string): any {
+  return Array.isArray(item?.extension) ? item.extension.find((e: any) => e?.url === canonical) : undefined;
+}
+function targetLabel(v: unknown): string {
+  if (v === "SYSBP.VSORRES") return "VS.VSORRES (SYSBP specialization; VSTESTCD=SYSBP)";
+  if (v === "AGE.AGE") return "DM.AGE (AGE specialization)";
+  return `Unresolved target: ${literal(v)}`;
+}
+function mappingOutputLabel(output: any): string {
+  if (output?.sdtmTarget !== undefined) return targetLabel(output.sdtmTarget);
+  if (output?.cdiscConcept !== undefined) return `CDISC concept ${literal(output.cdiscConcept)} (domain unresolved)`;
+  return "Unresolved target: missing output";
+}
+export function parseAnnotations(q: AuthoringNode): AnnotationResult {
+  const nodes: AuthoringNode[] = [];
+  const visit = (n: AuthoringNode) => { nodes.push(n); if (Array.isArray(n.item)) n.item.forEach(visit); };
+  visit(q);
+  const ids = new Map<string, number>();
+  for (const n of nodes) if (typeof n.linkId === "string") ids.set(n.linkId, (ids.get(n.linkId) ?? 0) + 1);
+  const warnings: string[] = [];
+  const annotations: Annotation[] = [];
+  for (const [id, count] of ids) if (count > 1) warnings.push(`Duplicate input linkId: ${id}`);
+  for (const n of nodes) {
+    if (n.sdtmTarget !== undefined || n.cdiscConcept !== undefined) {
+      const target = n.sdtmTarget !== undefined ? targetLabel(n.sdtmTarget) : `CDISC concept ${literal(n.cdiscConcept)} (domain unresolved)`;
+      annotations.push({ linkId: literal(n.linkId), kind: "Direct", text: `Direct → ${target}`, raw: { sdtmTarget: n.sdtmTarget, cdiscConcept: n.cdiscConcept } });
+      if (n.sdtmTarget === "AGE.AGE" && (n.type === "date" || n.type === "dateTime")) warnings.push(`${literal(n.linkId)}: direct AGE mapping is unsuitable for a date input used in age derivation.`);
+    }
+    if (n.mappingIntent === undefined) continue;
+    const m = n.mappingIntent;
+    if (!m || typeof m !== "object" || !Array.isArray(m.inputs) || !m.inputs.length || !m.output || typeof m.output !== "object") {
+      warnings.push(`Malformed mappingIntent on ${literal(n.linkId ?? "Questionnaire")}`); continue;
+    }
+    const target = mappingOutputLabel(m.output);
+    if (m.output.sdtmTarget && !["AGE.AGE", "SYSBP.VSORRES"].includes(m.output.sdtmTarget)) warnings.push(target);
+    for (const input of m.inputs) {
+      const id = input?.linkId;
+      if (typeof id !== "string" || !ids.has(id)) warnings.push(`Missing input reference: ${literal(id)}`);
+      const role = literal(input?.role);
+      annotations.push({ linkId: literal(id), kind: "Derived", text: `Input ${literal(id)} [${role}] → used to derive ${target}; not a direct mapping.`, raw: m });
+    }
+  }
+  return { annotations, warnings, raw: q };
+}
+export function escapeCrf(value: unknown): string {
+  return literal(value).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+}
+export function annotatedCrfHtml(q: AuthoringNode): string {
+  const parsed = parseAnnotations(q);
+  const esc = escapeCrf;
+  const fields = (items: AuthoringNode[] = []): string => items.map(n => {
+    const annotations = parsed.annotations.filter(a => a.linkId === n.linkId);
+    const heading = `<h3>${esc(n.text ?? n.linkId)}${n.required ? " *" : ""}</h3>`;
+    if (n.type === "group") return `<section class="group">${heading}${fields(n.item)}</section>`;
+    const options = Array.isArray(n.answerOption) ? n.answerOption.map((o: any) => esc(o.valueCoding?.display ?? o.valueString ?? o.valueCoding?.code)).join(" / ") : "";
+    return `<article class="field">${heading}<small>${esc(n.linkId)} · ${esc(n.type)}${options ? ` · ${options}` : ""}</small>${n.type === "display" ? "" : '<div class="blank">&nbsp;</div>'}${annotations.map(a => `<p class="annotation">${esc(a.text)}</p>`).join("")}</article>${Array.isArray(n.item) ? fields(n.item) : ""}`;
+  }).join("");
+  const intents: AuthoringNode[] = [];
+  const scan = (n: AuthoringNode) => { if (n.mappingIntent) intents.push(n.mappingIntent); if (Array.isArray(n.item)) n.item.forEach(scan); };
+  scan(q);
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; font-src 'none'; base-uri 'none'; form-action 'none'"><title>Annotated CRF</title><style>
+@page{size:A4;margin:16mm;@bottom-right{content:"Page " counter(page) " / " counter(pages);font-size:9pt;color:#526575}}
+*{box-sizing:border-box}body{font:10pt "Noto Sans CJK JP","Noto Sans JP",sans-serif;color:#203548;margin:0;line-height:1.5;overflow-wrap:anywhere}h1{font-size:19pt;line-height:1.4;margin:0 0 8pt}h2{font-size:14pt;margin:16pt 0 8pt}h3{font-size:11pt;margin:0 0 4pt}header{border-bottom:3pt solid #167b85;padding-bottom:10pt}p{margin:5pt 0}small{color:#526575}.notice{background:#edf5f5;padding:9pt;border-left:3pt solid #167b85}.group>h3{background:#e9eff4;padding:6pt;margin-top:12pt;break-after:avoid}.field{border:1px solid #c9d4dd;padding:8pt;margin:6pt 0;break-inside:avoid}.blank{border-bottom:1px solid #879ba9;height:22pt}.annotation{color:#075862;border-left:2pt solid #167b85;padding-left:7pt;font-size:9pt}.appendix{break-before:page}pre{white-space:pre-wrap;font-size:7.5pt;line-height:1.25;overflow-wrap:anywhere}a{color:#075862}.warning{color:#973c15}footer{font-size:8pt;border-top:1px solid #c9d4dd;margin-top:12pt;padding-top:6pt}@media screen{body{max-width:780px;margin:24px auto;padding:24px;box-shadow:0 1px 12px #ccd4da}.appendix{margin-top:40px}}
+</style></head><body><header><small>ORIGINAL SYNTHETIC STUDY · BLANK DEFINITION-BASED FORM</small><h1>${esc(q.title ?? "Questionnaire").replace(" / ", "<br>")}</h1><p>Annotated Case Report Form (CRF) · Study Data Tabulation Model (SDTM)</p></header>
+<p class="notice">Experimental custom authoring annotations; not standard JASPEHR or a finalized Fast Healthcare Interoperability Resources (FHIR) extension. All fields are blank regardless of entered answers. No real patient data. * Required field.</p>
+${fields(q.item)}
+<section class="appendix"><h2>Mapping intent and review boundaries</h2><p>Clinical Data Interchange Standards Consortium (CDISC) Dataset Specialization targets: VS = Vital Signs; DM = Demographics; VSORRES = original result; VSTESTCD = vital signs test short name; SYSBP = systolic blood pressure; AGE = age.</p>
+<p class="notice">Derived is this demo’s intent. The official AGE specialization declares Collected. This demo does not claim full specialization compliance, execute derivations, or generate an SDTM dataset.</p>
+${intents.map(m => `<article class="field"><h3>Derived direction</h3><p>${esc(Array.isArray(m.inputs) ? m.inputs.map((i: any) => `${literal(i?.linkId)} [${literal(i?.role)}]`).join(" + ") : "Missing inputs")} → ${esc(mappingOutputLabel(m.output))}</p><p>Intent: ${esc(m.intent ?? "Not provided")}</p><p>Optional derivation description (inert text): ${esc(m.derivationDescription ?? "Not provided")}</p></article>`).join("")}
+<p>Unresolved downstream decisions: completed years versus fractional age; partial or missing dates; leap-day birthdays; timezone/date boundaries; invalid date order; rounding. No age is calculated in this demonstration.</p>
+${parsed.warnings.map(w => `<p class="warning">Review warning: ${esc(w)}</p>`).join("")}
+<h2>Raw authoring metadata</h2><p>The original attributes and unknown metadata are preserved in the downloadable Questionnaire JSON. This display never evaluates annotation content.</p><pre>${esc(JSON.stringify({ directTargets: parsed.annotations.filter(a => a.kind === "Direct").map(a => ({ linkId: a.linkId, raw: a.raw })), mappingIntents: intents }, null, 2))}</pre>
+<footer>Independent synthetic layout inspired only by the baseline blood-pressure research context of the <a href="https://biolincc.nhlbi.nih.gov/studies/sprint/">Systolic Blood Pressure Intervention Trial (SPRINT)</a>. No original form, logo, or affiliation. Source design: author-supplied revision 4 examples.</footer></section></body></html>`;
+}

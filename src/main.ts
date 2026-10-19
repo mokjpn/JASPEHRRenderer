@@ -1,6 +1,7 @@
-﻿import "./style.css";
+import "./style.css";
 import * as fhirpath from "fhirpath";
 import { buildQuestionnaireResponse, type Answer, type Coding, type ItemModel, type Primitive, type RenderState } from "./buildQuestionnaireResponse";
+import { baselineDemo, annotatedCrfHtml, exactExtension } from "./buildQuestionnaireResponse";
 import sampleQuestionnaireText from "./sample-questionnaire.json?raw";
 
 type ItemType =
@@ -51,9 +52,9 @@ type AppItemModel = ItemModel & {
 type ValidationErr = { linkId: string; message: string };
 const EXT = {
   itemControl: "http://hl7.org/fhir/StructureDefinition/questionnaire-itemControl",
-  regex: "regex",
-  initialExpression: "questionnaire-initialExpression",
-  calculatedExpression: "questionnaire-calculatedExpression"
+  regex: "http://hl7.org/fhir/StructureDefinition/regex",
+  initialExpression: "http://hl7.org/fhir/StructureDefinition/questionnaire-initialExpression",
+  calculatedExpression: "http://hl7.org/fhir/StructureDefinition/questionnaire-calculatedExpression"
 };
 
 const LS_KEYS = {
@@ -100,7 +101,8 @@ document.addEventListener("keyup", (ev) => {
   if (ev.key === "Tab") tabNavigationInProgress = false;
 });
 function getExt(item: any, token: string): any | undefined {
-  return item?.extension?.find((e: any) => typeof e.url === "string" && e.url.includes(token));
+  return exactExtension(item, token) ?? (token === EXT.initialExpression || token === EXT.calculatedExpression
+    ? exactExtension(item, token.replace("http://hl7.org/fhir/StructureDefinition/questionnaire-", "http://hl7.org/fhir/uv/sdc/StructureDefinition/sdc-questionnaire-")) : undefined);
 }
 
 function mapControl(item: any): "radio" | "checkbox" | "dropdown" | "gtable" | undefined {
@@ -714,6 +716,24 @@ function renderLeft() {
 
   left.appendChild(row);
 
+  const demoControls = document.createElement("div");
+  demoControls.className = "row crf-controls";
+  const demoBtn = document.createElement("button");
+  demoBtn.textContent = "Load baseline BP demo / 血圧デモ";
+  demoBtn.onclick = () => { ta.value = JSON.stringify(baselineDemo, null, 2); loadBtn.click(); };
+  const previewBtn = document.createElement("button");
+  previewBtn.textContent = "Annotated CRF preview / PDF…";
+  previewBtn.onclick = () => showAnnotatedCrf();
+  const jsonBtn = document.createElement("button");
+  jsonBtn.textContent = "Download Questionnaire JSON";
+  jsonBtn.onclick = () => downloadDefinition("Questionnaire-annotated.json", JSON.stringify(questionnaire, null, 2), "application/json");
+  demoControls.append(demoBtn, previewBtn, jsonBtn);
+  left.appendChild(demoControls);
+  const annotationHelp = document.createElement("p");
+  annotationHelp.className = "help";
+  annotationHelp.textContent = "Experimental authoring annotation proposal · Preview uses the loaded definition and blank fields, independently of answers. PDF export uses your browser’s Print → Save as PDF.";
+  left.appendChild(annotationHelp);
+
   const as = document.createElement("label");
   as.className = "field";
   const cb = document.createElement("input");
@@ -912,3 +932,27 @@ boot();
 
 
 
+
+function downloadDefinition(name: string, text: string, mime: string) {
+  const url = URL.createObjectURL(new Blob([text], { type: mime }));
+  const a = document.createElement("a"); a.href = url; a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function showAnnotatedCrf() {
+  if (!questionnaire) return;
+  const html = annotatedCrfHtml(questionnaire);
+  const dialog = document.createElement("dialog"); dialog.className = "crf-dialog";
+  const controls = document.createElement("div"); controls.className = "row";
+  const info = document.createElement("p");
+  info.textContent = "Blank definition-based CRF. Export PDF: Print → Save as PDF (A4; disable browser headers/footers). Preview page breaks depend on the print engine.";
+  const frame = document.createElement("iframe"); frame.title = "Annotated Case Report Form preview";
+  frame.setAttribute("sandbox", "allow-same-origin allow-modals"); frame.srcdoc = html;
+  const print = document.createElement("button"); print.textContent = "Print / Save as PDF"; print.disabled = true;
+  frame.onload = () => { print.disabled = false; };
+  print.onclick = () => { frame.contentWindow?.focus(); frame.contentWindow?.print(); };
+  const save = document.createElement("button"); save.textContent = "Download annotated CRF HTML";
+  save.onclick = () => downloadDefinition("annotated-crf.html", html, "text/html;charset=utf-8");
+  const close = document.createElement("button"); close.textContent = "Close"; close.onclick = () => dialog.close();
+  dialog.onclose = () => dialog.remove(); controls.append(print, save, close);
+  dialog.append(controls, info, frame); document.body.append(dialog); dialog.showModal();
+}
