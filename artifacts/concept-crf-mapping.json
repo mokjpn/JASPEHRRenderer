@@ -1,0 +1,64 @@
+{
+  "status": "Experimental explicit CRF annotation mapping; never inferred from BC/DEC",
+  "direct": [
+    {
+      "linkId": "study-id",
+      "target": {
+        "sdtmVariableTarget": {
+          "domain": "DM",
+          "variable": "STUDYID"
+        }
+      }
+    },
+    {
+      "linkId": "participant-id",
+      "target": {
+        "sdtmVariableTarget": {
+          "domain": "DM",
+          "variable": "SUBJID"
+        }
+      }
+    },
+    {
+      "linkId": "birth-date",
+      "target": {
+        "sdtmVariableTarget": {
+          "domain": "DM",
+          "variable": "BRTHDTC"
+        }
+      }
+    },
+    {
+      "linkId": "sex",
+      "target": {
+        "sdtmTarget": "SEX.SEX"
+      }
+    },
+    {
+      "linkId": "systolic-bp",
+      "target": {
+        "sdtmTarget": "SYSBP.VSORRES"
+      }
+    },
+    {
+      "linkId": "diastolic-bp",
+      "target": {
+        "sdtmTarget": "DIABP.VSORRES"
+      }
+    },
+    {
+      "linkId": "pulse",
+      "target": {
+        "sdtmTarget": "PULSE.VSORRES"
+      }
+    }
+  ],
+  "derived": [
+    {
+      "linkId": "demographics",
+      "target": {
+        "sdtmTarget": "AGE.AGE"
+      }
+    }
+  ]
+}

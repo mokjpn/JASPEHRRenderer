@@ -2,6 +2,7 @@
   "resourceType": "Questionnaire",
   "id": "synthetic-baseline-bp",
   "status": "draft",
+  "annotationPlan": "target",
   "title": "Baseline blood-pressure study / 血圧研究・ベースライン",
   "description": "Original synthetic demonstration; no real patient data. Experimental authoring annotations, not standard JASPEHR or a finalized FHIR extension.",
   "item": [

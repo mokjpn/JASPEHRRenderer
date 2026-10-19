@@ -38,3 +38,16 @@ for index in range(40):
     assert f'Additional synthetic field {index} ' in stress_text, index
 assert len(stress.pages) > 3
 print(f'PASS PDF: 3-page A4 sample, Japanese, blank fields, all 9 fields annotated, ID distinction; {len(stress.pages)}-page stress retains 40 added fields')
+
+HTML(filename='artifacts/annotated-crf-concept.html').write_pdf('artifacts/annotated-crf-concept.pdf')
+concept = PdfReader('artifacts/annotated-crf-concept.pdf')
+assert len(concept.pages) == 4
+concept_text = '\n'.join(p.extract_text() for p in concept.pages)
+for value in ['C25298', 'C70856', 'C25299', 'C49676', 'C28421', 'C83217', 'C69260', 'C170981', 'Separate explicit CRF mapping', 'not inferred from BC/DEC', 'BC/DEC exception', '性別', '脈拍']:
+    assert value in concept_text, value
+for field, annotation in field_checks.items():
+    assert any(field in p.extract_text() and annotation in p.extract_text() for p in concept.pages[:3]), field
+assert 'SYN-BP-001' not in concept_text and 'DEMO-001' not in concept_text
+assert 'No age is calculated' in concept_text
+assert '/JavaScript' not in str(concept.trailer)
+print('PASS Plan 1 PDF: four A4 pages; all nine fields, concept IDs, separate explicit mappings, exceptions and Japanese text')

@@ -1,7 +1,7 @@
 import "./style.css";
 import * as fhirpath from "fhirpath";
 import { buildQuestionnaireResponse, type Answer, type Coding, type ItemModel, type Primitive, type RenderState } from "./buildQuestionnaireResponse";
-import { baselineDemo, annotatedCrfHtml, exactExtension } from "./buildQuestionnaireResponse";
+import { baselineDemo, conceptDemo, annotatedCrfHtml, exactExtension } from "./buildQuestionnaireResponse";
 import sampleQuestionnaireText from "./sample-questionnaire.json?raw";
 
 type ItemType =
@@ -719,19 +719,22 @@ function renderLeft() {
   const demoControls = document.createElement("div");
   demoControls.className = "row crf-controls";
   const demoBtn = document.createElement("button");
-  demoBtn.textContent = "Load baseline BP demo / 血圧デモ";
+  demoBtn.textContent = "Load baseline BP demo / 案２：Specialization";
   demoBtn.onclick = () => { ta.value = JSON.stringify(baselineDemo, null, 2); loadBtn.click(); };
+  const conceptBtn = document.createElement("button");
+  conceptBtn.textContent = "Load Plan 1: BC + DEC / 案１";
+  conceptBtn.onclick = () => { ta.value = JSON.stringify(conceptDemo, null, 2); loadBtn.click(); };
   const previewBtn = document.createElement("button");
   previewBtn.textContent = "Annotated CRF preview / PDF…";
   previewBtn.onclick = () => showAnnotatedCrf();
   const jsonBtn = document.createElement("button");
   jsonBtn.textContent = "Download Questionnaire JSON";
   jsonBtn.onclick = () => downloadDefinition("Questionnaire-annotated.json", JSON.stringify(questionnaire, null, 2), "application/json");
-  demoControls.append(demoBtn, previewBtn, jsonBtn);
+  demoControls.append(demoBtn, conceptBtn, previewBtn, jsonBtn);
   left.appendChild(demoControls);
   const annotationHelp = document.createElement("p");
   annotationHelp.className = "help";
-  annotationHelp.textContent = "Experimental authoring annotation proposal · Preview uses the loaded definition and blank fields, independently of answers. PDF export uses your browser’s Print → Save as PDF.";
+  annotationHelp.textContent = `${questionnaire?.annotationPlan === "concept" ? "案１ / Plan 1: BC + DEC with separate explicit CRF mapping." : questionnaire?.annotationPlan === "target" ? "案２ / Plan 2: Dataset Specialization targets." : "Custom questionnaire."} Loading a plan resets answers. ` + "Experimental authoring annotation proposal · Preview uses the loaded definition and blank fields, independently of answers. PDF export uses your browser’s Print → Save as PDF.";
   left.appendChild(annotationHelp);
 
   const as = document.createElement("label");

@@ -67,3 +67,9 @@ On this demo branch, select **Load baseline BP demo / 血圧デモ**, then **Ann
 The direct systolic-pressure target resolves to `VS.VSORRES` with `VSTESTCD=SYSBP`. Sex, pulse, diastolic pressure and study/local subject IDs also have adjacent annotations. Birth/reference dates are inputs used to derive `DM.AGE`; birth date also maps to `DM.BRTHDTC`. The age reference date is not labeled as treatment start. The local subject identifier maps to `DM.SUBJID`, not `DM.USUBJID`; no globally unique subject identifier or age is calculated. Free-text notes show an explicit demonstration-only not-mapped reason, and every data-entry field has a visible mapping status. These are experimental custom authoring attributes, not standard JASPEHR extensions. This demo's **Derived** intent differs from the official AGE specialization's **Collected** declaration.
 
 The supplied three-page PDF was generated separately using **WeasyPrint**, and its Japanese text and layout were inspected. **Actual browser Print / Save as PDF and standalone file opening remain unverified** because sandbox-enabled Chromium could not start. Browser pagination can differ. No deployment is provided.
+
+### Plan 1 comparison / 案１との比較
+
+Use **Load Plan 1: BC + DEC / 案１** to compare Biomedical Concept and Data Element Concept authoring with the existing Plan 2 demo. Both use identical input controls; switching resets answers. Plan 1 keeps the proposed concept annotations separate from an explicit experimental `crfMapping` for SDTM display. It never infers a unique SDTM variable from a concept pair. Identifier exceptions and every unmapped field are labeled.
+
+See [comparison notes and both sets of JSON/HTML/PDF](artifacts/COMPARISON.md), or download [comparison.html](artifacts/comparison.html) for a self-contained annotation comparison. The two sample PDFs use WeasyPrint; actual browser printing remains unverified.

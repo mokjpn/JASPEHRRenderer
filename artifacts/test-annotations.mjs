@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-const { baselineDemo, parseAnnotations, annotatedCrfHtml, exactExtension, buildQuestionnaireResponse } = await import(pathToFileURL(process.argv[2]));
+const { baselineDemo, conceptDemo, parseAnnotations, annotatedCrfHtml, exactExtension, buildQuestionnaireResponse } = await import(pathToFileURL(process.argv[2]));
 let checks = 0;
 const test = (name, run) => { run(); checks++; console.log(`PASS ${name}`); };
 const q = structuredClone(baselineDemo);
@@ -103,5 +103,47 @@ test('identifier and unmapped metadata remain escaped inert text', () => {
  const q={item:[{linkId:'id',type:'string',sdtmVariableTarget:{domain:'DM',variable:'SUBJID'},mappingNote:'<script>globalThis.pwned=1</script>'},{linkId:'memo',type:'text',mappingNotMappedReason:'<img src=x onerror="globalThis.pwned=1">'}]};
  const html=annotatedCrfHtml(q);assert.ok(!html.includes('<script>'));assert.ok(!html.includes('<img'));assert.equal(globalThis.pwned,undefined);
  assert.match(parseAnnotations({item:[{linkId:'bad',type:'string',sdtmTarget:'DM.STUDYID'}]}).annotations[0].text,/Unresolved target/);
+});
+test('plan 1 uses revision 4 concept pairs and the same input controls', () => {
+ const fields=items=>items.flatMap(n=>[n,...fields(n.item??[])]);
+ const q1=fields(conceptDemo.item),q2=fields(baselineDemo.item);
+ for(let i=0;i<q1.length;i++)for(const key of ['linkId','text','type','required','initial','minValue','maxValue','answerOption','extension'])assert.deepEqual(q1[i][key],q2[i][key],key);
+ assert.deepEqual(q1.find(n=>n.linkId==='systolic-bp').cdiscConcept,{bc:'C25298',dec:'C70856'});
+ assert.deepEqual(q1.find(n=>n.linkId==='demographics').mappingIntent.output,{cdiscConcept:{bc:'C69260',dec:'C170981'}});
+ for(const [id,bc,dec] of [['sex','C28421','C28421'],['pulse','C49676','C70856'],['diastolic-bp','C25299','C70856'],['birth-date','C83217','C70856']])assert.deepEqual(q1.find(n=>n.linkId===id).cdiscConcept,{bc,dec});
+ for(const n of q1){assert.equal(n.sdtmTarget,undefined);assert.equal(n.sdtmVariableTarget,undefined);}
+ for(const id of ['study-id','participant-id','reference-date','notes'])assert.ok(q1.find(n=>n.linkId===id).conceptNotMappedReason,id);
+});
+test('explicit CRF map is independent; concept pairs never infer SDTM targets', () => {
+ const q=structuredClone(conceptDemo);const p=parseAnnotations(q);assert.deepEqual(p.warnings,[]);
+ assert.ok(p.annotations.some(a=>a.linkId==='systolic-bp'&&a.kind==='Direct'&&a.text.includes('VS.VSORRES')));
+ assert.ok(p.annotations.some(a=>a.linkId==='birth-date'&&a.kind==='Derived'&&a.text.includes('DM.AGE')));
+ delete q.crfMapping;
+ const unresolved=parseAnnotations(q);assert.ok(!unresolved.annotations.some(a=>a.kind==='Direct'));
+ assert.ok(!unresolved.annotations.some(a=>a.kind==='Derived'&&a.text.includes('DM.AGE')));
+ assert.ok(unresolved.annotations.some(a=>a.linkId==='systolic-bp'&&a.kind==='Not mapped'));
+ q.crfMapping=structuredClone(conceptDemo.crfMapping);delete q.item[2].item[0].cdiscConcept;
+ assert.ok(parseAnnotations(q).annotations.some(a=>a.linkId==='systolic-bp'&&a.kind==='Direct'&&a.text.includes('VS.VSORRES')));
+});
+test('plan 1 has explicit coverage for sex, pulse, IDs and every entry field', () => {
+ const p=parseAnnotations(conceptDemo),html=annotatedCrfHtml(conceptDemo);
+ for(const id of ['study-id','participant-id','birth-date','reference-date','sex','systolic-bp','diastolic-bp','pulse','notes']){
+  const article=html.split('<article class="field">').find(s=>s.includes(`<small>${id} ·`));assert.ok(article,id);assert.match(article.split('</article>')[0],/class="annotation"/);
+ }
+ for(const [id,target] of [['sex','DM.SEX'],['pulse','VSTESTCD=PULSE'],['study-id','DM.STUDYID'],['participant-id','DM.SUBJID']])assert.ok(p.annotations.some(a=>a.linkId===id&&a.kind==='Direct'&&a.text.includes(target)),id);
+ assert.match(html,/not inferred from BC\/DEC/);assert.match(html,/Separate explicit CRF mapping/);
+});
+test('plan 1 raw annotations are inert, preserved and absent from answer export', () => {
+ const q=structuredClone(conceptDemo);q.crfMapping.direct[0].target.sdtmVariableTarget.variable='</pre><script>globalThis.pwned=1</script>';
+ q.item[1].mappingIntent.derivationDescription='Function("globalThis.pwned=1")()';
+ const before=JSON.stringify(q),html=annotatedCrfHtml(q);assert.ok(!html.includes('<script>'));assert.equal(globalThis.pwned,undefined);assert.equal(JSON.stringify(q),before);
+ const models=items=>items.map(n=>({...n,children:models(n.item??[])}));
+ const text=JSON.stringify(buildQuestionnaireResponse(q,models(q.item),{'systolic-bp':132},()=>true));
+ for(const key of ['crfMapping','cdiscConcept','sdtmTarget','annotationPlan','conceptNotMappedReason','mappingIntent','derivationDescription'])assert.ok(!text.includes(key));
+});
+test('missing and ambiguous explicit CRF mappings are reported', () => {
+ const q=structuredClone(conceptDemo);q.crfMapping.direct.push({linkId:'missing',target:{sdtmTarget:'SEX.SEX'}});
+ q.crfMapping.direct.push(structuredClone(q.crfMapping.direct[0]));
+ const p=parseAnnotations(q);assert.ok(p.warnings.some(w=>w.includes('Missing explicit CRF mapping reference: missing')));assert.ok(p.warnings.some(w=>w.includes('Ambiguous explicit CRF direct mapping: study-id')));
 });
 console.log(`${checks} focused checks passed`);

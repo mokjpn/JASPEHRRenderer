@@ -1,0 +1,258 @@
+{
+  "resourceType": "Questionnaire",
+  "id": "synthetic-baseline-bp-concept",
+  "status": "draft",
+  "annotationPlan": "concept",
+  "title": "Baseline blood-pressure study / 血圧研究・ベースライン",
+  "description": "Original synthetic demonstration; no real patient data. Experimental authoring annotations, not standard JASPEHR or a finalized FHIR extension.",
+  "item": [
+    {
+      "linkId": "identifiers",
+      "text": "Study and participant / 研究・参加者",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "study-id",
+          "text": "Study identifier / 研究ID",
+          "type": "string",
+          "required": true,
+          "initial": [
+            {
+              "valueString": "SYN-BP-001"
+            }
+          ],
+          "conceptNotMappedReason": "No suitable study-identifier BC + DEC pair verified for this demo; base DM.STUDYID mapping is an explicit exception."
+        },
+        {
+          "linkId": "participant-id",
+          "text": "Study-local subject identifier / 研究内参加者ID",
+          "type": "string",
+          "required": true,
+          "initial": [
+            {
+              "valueString": "DEMO-001"
+            }
+          ],
+          "mappingNote": "Unique within this study only. DM.USUBJID (Unique Subject Identifier across studies) requires sponsor-managed identity resolution; this demo does not derive it.",
+          "conceptNotMappedReason": "No suitable study-local subject-identifier BC + DEC pair verified for this demo; base DM.SUBJID mapping is an explicit exception, not USUBJID."
+        }
+      ]
+    },
+    {
+      "linkId": "demographics",
+      "text": "Demographics / 人口統計",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "birth-date",
+          "text": "Birth date / 生年月日",
+          "type": "date",
+          "required": true,
+          "cdiscConcept": {
+            "bc": "C83217",
+            "dec": "C70856"
+          }
+        },
+        {
+          "linkId": "reference-date",
+          "text": "Age reference date / 年齢基準日",
+          "type": "date",
+          "required": true,
+          "mappingNote": "Age-reference input only; not DM.RFSTDTC (Subject Reference Start Date/Time) or VS.VSDTC (vital signs collection date/time).",
+          "conceptNotMappedReason": "No separate BC + DEC asserted for this study-specific age-reference date; referenceDate is an input role, not a collection-date concept."
+        },
+        {
+          "linkId": "sex",
+          "text": "Sex as collected / 性別",
+          "type": "choice",
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/questionnaire-itemControl",
+              "valueCodeableConcept": {
+                "coding": [
+                  {
+                    "code": "drop-down"
+                  }
+                ]
+              }
+            }
+          ],
+          "answerOption": [
+            {
+              "valueCoding": {
+                "code": "F",
+                "display": "F / Female / 女性"
+              }
+            },
+            {
+              "valueCoding": {
+                "code": "INTERSEX",
+                "display": "INTERSEX / Intersex / インターセックス"
+              }
+            },
+            {
+              "valueCoding": {
+                "code": "M",
+                "display": "M / Male / 男性"
+              }
+            },
+            {
+              "valueCoding": {
+                "code": "U",
+                "display": "U / Unknown / 不明"
+              }
+            }
+          ],
+          "cdiscConcept": {
+            "bc": "C28421",
+            "dec": "C28421"
+          }
+        }
+      ],
+      "mappingIntent": {
+        "inputs": [
+          {
+            "linkId": "birth-date",
+            "role": "birthDate"
+          },
+          {
+            "linkId": "reference-date",
+            "role": "referenceDate"
+          }
+        ],
+        "output": {
+          "cdiscConcept": {
+            "bc": "C69260",
+            "dec": "C170981"
+          }
+        },
+        "intent": "生年月日と研究基準日から、基準日時点の年齢を年単位で導出する",
+        "derivationDescription": "referenceDateからbirthDateを差し引いた期間を、基準日時点の年齢として年単位で表す。満年齢か小数年齢か、部分日付・閏日・丸め等の扱いは下流仕様で明示的に決定する。"
+      }
+    },
+    {
+      "linkId": "vitals",
+      "text": "Seated baseline vitals / 座位バイタル",
+      "type": "group",
+      "item": [
+        {
+          "linkId": "systolic-bp",
+          "text": "Systolic blood pressure (mmHg) / 収縮期血圧",
+          "type": "integer",
+          "required": true,
+          "minValue": {
+            "value": 40
+          },
+          "maxValue": {
+            "value": 300
+          },
+          "cdiscConcept": {
+            "bc": "C25298",
+            "dec": "C70856"
+          }
+        },
+        {
+          "linkId": "diastolic-bp",
+          "text": "Diastolic blood pressure (mmHg) / 拡張期血圧",
+          "type": "integer",
+          "minValue": {
+            "value": 20
+          },
+          "maxValue": {
+            "value": 200
+          },
+          "cdiscConcept": {
+            "bc": "C25299",
+            "dec": "C70856"
+          }
+        },
+        {
+          "linkId": "pulse",
+          "text": "Pulse (beats/min) / 脈拍",
+          "type": "integer",
+          "minValue": {
+            "value": 20
+          },
+          "maxValue": {
+            "value": 250
+          },
+          "cdiscConcept": {
+            "bc": "C49676",
+            "dec": "C70856"
+          }
+        },
+        {
+          "linkId": "notes",
+          "text": "Measurement notes / 測定メモ",
+          "type": "text",
+          "mappingNotMappedReason": "Demonstration-only free text; no submission variable or link to an individual vital signs record has been specified.",
+          "conceptNotMappedReason": "Demonstration-only free text; no BC + DEC pair or SDTM submission mapping specified."
+        }
+      ]
+    }
+  ],
+  "crfMapping": {
+    "status": "Experimental explicit CRF annotation mapping; never inferred from BC/DEC",
+    "direct": [
+      {
+        "linkId": "study-id",
+        "target": {
+          "sdtmVariableTarget": {
+            "domain": "DM",
+            "variable": "STUDYID"
+          }
+        }
+      },
+      {
+        "linkId": "participant-id",
+        "target": {
+          "sdtmVariableTarget": {
+            "domain": "DM",
+            "variable": "SUBJID"
+          }
+        }
+      },
+      {
+        "linkId": "birth-date",
+        "target": {
+          "sdtmVariableTarget": {
+            "domain": "DM",
+            "variable": "BRTHDTC"
+          }
+        }
+      },
+      {
+        "linkId": "sex",
+        "target": {
+          "sdtmTarget": "SEX.SEX"
+        }
+      },
+      {
+        "linkId": "systolic-bp",
+        "target": {
+          "sdtmTarget": "SYSBP.VSORRES"
+        }
+      },
+      {
+        "linkId": "diastolic-bp",
+        "target": {
+          "sdtmTarget": "DIABP.VSORRES"
+        }
+      },
+      {
+        "linkId": "pulse",
+        "target": {
+          "sdtmTarget": "PULSE.VSORRES"
+        }
+      }
+    ],
+    "derived": [
+      {
+        "linkId": "demographics",
+        "target": {
+          "sdtmTarget": "AGE.AGE"
+        }
+      }
+    ]
+  }
+}
