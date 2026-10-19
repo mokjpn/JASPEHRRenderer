@@ -56,7 +56,7 @@ Use it by opening `dist/index.standalone.html` directly in your browser.
 
 ## Experimental annotated CRF demo / 注釈付きCRFデモ
 
-On this demo branch, select **Load baseline BP demo / 血圧デモ**, then **Annotated CRF preview / PDF…** and **Print / Save as PDF**. The original synthetic study uses proposed Study Data Tabulation Model (SDTM) annotations on a blank Case Report Form (CRF), independently of entered answers. The app remains browser-only with no PDF library.
+On this demo branch, select **Load baseline BP demo / 血圧デモ**, then **Annotated CRF preview / PDF…** and **Print / Save as PDF**. The original synthetic study uses proposed Study Data Tabulation Model (SDTM) annotations on a blank Case Report Form (CRF), independently of entered answers. The app remains browser-only with no PDF library. When opening an updated app, press **Load baseline BP demo** again: auto-save preserves previously loaded definitions.
 
 - [Synthetic Questionnaire JSON](artifacts/baseline-bp-questionnaire.json)
 - [Sample annotated CRF PDF](artifacts/annotated-crf.pdf)
@@ -64,6 +64,6 @@ On this demo branch, select **Load baseline BP demo / 血圧デモ**, then **Ann
 - [Standalone application](artifacts/index.standalone.html): download the raw file and open locally; GitHub's HTML source preview does not run the app.
 - [Implementation, semantics, tests and limitations](artifacts/IMPLEMENTATION.md)
 
-The direct systolic-pressure target resolves to `VS.VSORRES` with `VSTESTCD=SYSBP`. Birth/reference dates are inputs used to derive `DM.AGE`; no age calculation is executed. These are experimental custom authoring attributes, not standard JASPEHR extensions. This demo's **Derived** intent differs from the official AGE specialization's **Collected** declaration.
+The direct systolic-pressure target resolves to `VS.VSORRES` with `VSTESTCD=SYSBP`. Sex, pulse, diastolic pressure and study/local subject IDs also have adjacent annotations. Birth/reference dates are inputs used to derive `DM.AGE`; birth date also maps to `DM.BRTHDTC`. The age reference date is not labeled as treatment start. The local subject identifier maps to `DM.SUBJID`, not `DM.USUBJID`; no globally unique subject identifier or age is calculated. Free-text notes show an explicit demonstration-only not-mapped reason, and every data-entry field has a visible mapping status. These are experimental custom authoring attributes, not standard JASPEHR extensions. This demo's **Derived** intent differs from the official AGE specialization's **Collected** declaration.
 
 The supplied three-page PDF was generated separately using **WeasyPrint**, and its Japanese text and layout were inspected. **Actual browser Print / Save as PDF and standalone file opening remain unverified** because sandbox-enabled Chromium could not start. Browser pagination can differ. No deployment is provided.

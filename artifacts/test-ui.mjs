@@ -31,14 +31,28 @@ assert.equal(input('study-id').value,'SYN-BP-001');
 assert.ok(d.querySelector('#right').textContent.includes('必須'));
 set('systolic-bp','999');
 assert.ok(d.querySelector('#right').textContent.includes('300'));
+const sex=d.querySelector('#item-sex select');sex.value='2';sex.dispatchEvent(new w.Event('change',{bubbles:true}));
 set('birth-date','1970-01-01');set('reference-date','2026-10-19');set('systolic-bp','132');
 button('QuestionnaireResponse を生成').click();
 const response=JSON.parse(d.querySelector('#qr-preview').textContent);
 assert.equal(response.item[0].item[0].answer[0].valueString,'SYN-BP-001');
 assert.ok(JSON.stringify(response).includes('1970-01-01'));
+assert.equal(response.item[1].item.find(i=>i.linkId==='sex').answer[0].valueCoding.code,'M');
+for(const name of ['sdtmTarget','sdtmVariableTarget','mappingNotMappedReason','mappingNote','mappingIntent']) assert.ok(!JSON.stringify(response).includes(name));
 button('Annotated CRF preview').click();
 let html=d.querySelector('iframe').srcdoc;
 assert.ok(html.includes('DM.AGE'));assert.ok(!html.includes('1970-01-01'));
+const preview=new JSDOM(html);const articles=[...preview.window.document.querySelectorAll('article.field')];
+for(const id of ['study-id','participant-id','birth-date','reference-date','sex','systolic-bp','diastolic-bp','pulse','notes']){
+ const article=articles.find(a=>a.querySelector('small')?.textContent.startsWith(id+' ·'));
+ assert.ok(article?.querySelector('.annotation'),id);
+ if(id==='sex') assert.ok(article.textContent.includes('DM.SEX'));
+ if(id==='pulse') assert.ok(article.textContent.includes('VSTESTCD=PULSE'));
+ if(id==='study-id') assert.ok(article.textContent.includes('DM.STUDYID'));
+ if(id==='participant-id') assert.ok(article.textContent.includes('DM.SUBJID'));
+ if(id==='notes') assert.ok(article.textContent.includes('Not mapped / demonstration-only'));
+}
+preview.window.close();
 assert.equal(d.querySelector('iframe').getAttribute('sandbox'),'allow-same-origin allow-modals');
 button('Close').click();
 set('birth-date','1980-02-02');button('Annotated CRF preview').click();

@@ -25,6 +25,36 @@ The demo explicitly labels its intent **Derived**, while the official AGE specia
 
 These are **experimental custom authoring attributes**, not standard JASPEHR attributes or a finalized FHIR extension. No invented canonical URL or extension serialization is introduced. The renderer now parses recognized existing extensions by exact canonical URL, accepting the bundled legacy expression URLs and the Structured Data Capture (SDC) expression URLs explicitly. Unknown and lookalike URLs remain raw metadata. Existing genuine calculatedExpression behavior is preserved; annotation fields have no path into its evaluator. HTML text is escaped, and the preview frame has no script permission plus a restrictive Content Security Policy.
 
+## Complete field coverage and verified targets
+
+All nine demo data-entry fields now have an adjacent mapping annotation or an explicit not-mapped reason. For other loaded questionnaires, the print renderer shows a **Not mapped / demonstration-only** fallback whenever no direct or derived intent is present; a note alone does not count as a mapping.
+
+| Entry field | Mapping choice | Meaning and boundary |
+| --- | --- | --- |
+| Study identifier | Base variable `DM.STUDYID` | Identifies this study; not a subject identifier. |
+| Study-local subject identifier | Base variable `DM.SUBJID` | Unique within the study. It is not `DM.USUBJID`. |
+| Birth date | Base variable `DM.BRTHDTC`, and input to derived `DM.AGE` | The birth date is collected directly; its use in AGE derivation is a separate annotation. |
+| Age reference date | Input to derived `DM.AGE` | Age-reference only; no direct `DM.RFSTDTC` or `VS.VSDTC` mapping is claimed. |
+| Sex as collected | `SEX.SEX` specialization → `DM.SEX` | Choice codes `F`, `INTERSEX`, `M`, `U`, from SEX codelist `C66731` in the pinned metadata. |
+| Systolic pressure | `SYSBP.VSORRES` → `VS.VSORRES` | `VSTESTCD=SYSBP`, label unit mmHg. |
+| Diastolic pressure | `DIABP.VSORRES` → `VS.VSORRES` | `VSTESTCD=DIABP`, label unit mmHg. |
+| Pulse rate | `PULSE.VSORRES` → `VS.VSORRES` | `VSTESTCD=PULSE`, label unit beats/min. |
+| Measurement notes | Not mapped / demonstration-only | No submission variable or linkage to an individual vital-sign record has been specified. |
+
+No unique subject identifier is generated. `DM.USUBJID` identifies a subject across studies/applications/submissions involving the product and requires sponsor-managed identity resolution. Merely relabeling `SUBJID` or concatenating two fields is not asserted to satisfy that requirement. There is no USUBJID derivation in this demo; consequently no speculative identifier `mappingIntent` is added.
+
+The original revision 4 `sdtmTarget` notation remains reserved for **specialization ID + variable**. The additional local authoring attribute `sdtmVariableTarget: { "domain": "DM", "variable": "STUDYID" }` represents a base SDTM variable without asserting an official specialization ID; `SUBJID` and `BRTHDTC` use the same distinct representation. `mappingNote` and `mappingNotMappedReason` are additional inert local authoring text attributes. These companion attributes are experimental demo conventions, not additions claimed to be in the original proposal or a FHIR/JASPEHR standard. The raw JSON preserves them; QuestionnaireResponse does not copy them.
+
+Official metadata was checked on 2026-10-19. The CDISC Conceptual and Operational Standards Metadata Services (COSMoS) source is pinned to commit `031429b1d14823721991cd23ee88a11616686ce3`:
+
+- [SEX specialization, package 2025-04-01](https://github.com/cdisc-org/COSMoS/blob/031429b1d14823721991cd23ee88a11616686ce3/yaml/20250401_r11/sdtm/sdtm_sex.yaml): confirms specialization `SEX`, domain `DM`, variable `SEX`, codelist and four allowed values, and Collected origin.
+- [PULSE specialization, package 2026-05-26](https://github.com/cdisc-org/COSMoS/blob/031429b1d14823721991cd23ee88a11616686ce3/yaml/20260526_r17/sdtm/sdtm_pulse.yaml): confirms specialization `PULSE`, domain `VS`, variable `VSORRES`, assigned test code `PULSE`, and unit beats/min.
+- [DIABP specialization, package 2026-05-26](https://github.com/cdisc-org/COSMoS/blob/031429b1d14823721991cd23ee88a11616686ce3/yaml/20260526_r17/sdtm/sdtm_diabp.yaml): confirms specialization `DIABP`, domain `VS`, variable `VSORRES`, assigned test code `DIABP`, and unit mmHg.
+- [Pinned official specialization export](https://github.com/cdisc-org/COSMoS/blob/031429b1d14823721991cd23ee88a11616686ce3/export/cdisc_sdtm_dataset_specializations_latest.csv): cross-checked the above rows, SYSBP, and AGE. No STUDYID/SUBJID/USUBJID specialization ID is assumed from their variable names.
+- [Official SDTM Implementation Guide v3.3, section 5.2 Demographics](https://www.cdisc.org/standards/foundational/sdtmig/sdtmig-v3-3/html): checked the definitions of `STUDYID`, `SUBJID`, `USUBJID`, `BRTHDTC`, `RFSTDTC`, and `SEX`. The age-reference date in this demo has no treatment-start semantics, so it is not labeled RFSTDTC.
+
+Metadata content based on [CDISC COSMoS](https://github.com/cdisc-org/COSMoS), used under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); the mappings, labels, and experimental authoring conventions here are this demonstration's adaptations. This is proposed annotation intent, not a complete submission specification: normalization, units, timing, origin, privacy, and other required domain variables still require downstream review.
+
 ## Source and independent design
 
 The custom authoring attributes follow the [revision 4 proposal](https://nc.okadajp.org/s/g5d7CAjXf32icFy). Only the synthetic demonstration and its annotation metadata are included; the original report and example collection are not redistributed.
@@ -53,11 +83,11 @@ PYTHONPATH=/tmp/jaspehr-pdf-tools python artifacts/verify-pdf.py
 pdftoppm -scale-to 1200 -png artifacts/annotated-crf.pdf artifacts/crf-page
 ```
 
-Both builds passed; Vite retains its existing bundle-size warning. Eleven focused tests passed for direct/derived semantics, missing/duplicate references, optional/malformed mapping descriptions, exact canonical URL matching, escaping/nonexecution, Japanese/blank output/compliance caveats, unresolved targets/concepts, and original response hierarchy.
+Both builds passed; Vite retains its existing bundle-size warning. Fourteen focused tests passed for direct/derived semantics, missing/duplicate references, optional/malformed mapping descriptions, exact canonical URL matching, escaping/nonexecution, Japanese/blank output/compliance caveats, unresolved targets/concepts, and original response hierarchy.
 
 The jsdom Document Object Model (DOM) integration test passed against the built application: original calculated expressions update on blur, enableWhen visibility, required/min/max/regular-expression validation, load-demo, answer export, preview generation, answer independence, malicious annotation escaping, and rejection of lookalike expression extensions. This tests application behavior without a real browser and does not verify browser rendering or print APIs.
 
-The final sample is three A4 pages. All three page images were visually inspected: Japanese glyphs render, no fields or annotations clip, vital signs begin on page 2, and intent/raw metadata fit on page 3. PDF text extraction verifies Japanese and direct/derived targets, blank answer values, and absence of PDF form fields. A seven-page stress document retains all forty extra synthetic fields. Fonts are embedded by WeasyPrint using locally installed Noto CJK fonts; Fontconfig emitted cache warnings but rendering succeeded.
+The final sample is three A4 pages. All three page images were visually inspected: Japanese glyphs render, no fields or annotations clip, vital signs begin on page 2, and intent/raw metadata fit on page 3. PDF text extraction verifies Japanese and direct/derived targets, blank answer values, and absence of PDF form fields. A nine-page stress document retains all forty extra synthetic fields. Fonts are embedded by WeasyPrint using locally installed Noto CJK fonts; Fontconfig emitted cache warnings but rendering succeeded.
 
 ## Remaining verification gap
 
@@ -65,4 +95,6 @@ Sandbox-enabled Chromium aborts because `/usr/lib/chromium/chrome-sandbox` is ow
 
 ## Final focused review
 
-Two review findings were fixed: direct AGE warnings now apply only to date/dateTime inputs, allowing a legitimately collected numeric AGE target; concept-only derived outputs use the same unresolved-domain label in both field annotations and the appendix. Additional tests confirm annotation metadata never leaks into QuestionnaireResponse and parsing/printing never mutates the source definition. The annotation parser reads only authoring attributes; the existing expression engine reads only explicitly recognized initial/calculated-expression extensions. The print generator accepts no answer state. Both builds and all eleven focused tests plus DOM/PDF checks passed after these fixes. Actual browser printing remains unverified.
+Two review findings were fixed: direct AGE warnings now apply only to date/dateTime inputs, allowing a legitimately collected numeric AGE target; concept-only derived outputs use the same unresolved-domain label in both field annotations and the appendix. Additional tests confirm annotation metadata never leaks into QuestionnaireResponse and parsing/printing never mutates the source definition. The annotation parser reads only authoring attributes; the existing expression engine reads only explicitly recognized initial/calculated-expression extensions. The print generator accepts no answer state. Both builds and all fourteen focused tests plus DOM/PDF checks passed after these fixes. Actual browser printing remains unverified.
+
+The field-coverage correction adds tests for all nine adjacent annotations, base-variable versus specialization notation, identifier scope, explicit fallback/reason text, sex choice export, and escaping/nonexecution of the companion metadata. All updated form fields and annotations were visually inspected in the three-page regenerated WeasyPrint PDF. Browser printing is still unverified.

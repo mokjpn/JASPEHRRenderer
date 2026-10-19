@@ -19,18 +19,27 @@
             {
               "valueString": "SYN-BP-001"
             }
-          ]
+          ],
+          "sdtmVariableTarget": {
+            "domain": "DM",
+            "variable": "STUDYID"
+          }
         },
         {
           "linkId": "participant-id",
-          "text": "Synthetic participant identifier / 架空参加者ID",
+          "text": "Study-local subject identifier / 研究内参加者ID",
           "type": "string",
           "required": true,
           "initial": [
             {
               "valueString": "DEMO-001"
             }
-          ]
+          ],
+          "sdtmVariableTarget": {
+            "domain": "DM",
+            "variable": "SUBJID"
+          },
+          "mappingNote": "Unique within this study only. DM.USUBJID (Unique Subject Identifier across studies) requires sponsor-managed identity resolution; this demo does not derive it."
         }
       ]
     },
@@ -43,18 +52,62 @@
           "linkId": "birth-date",
           "text": "Birth date / 生年月日",
           "type": "date",
-          "required": true
+          "required": true,
+          "sdtmVariableTarget": {
+            "domain": "DM",
+            "variable": "BRTHDTC"
+          }
         },
         {
           "linkId": "reference-date",
-          "text": "Study reference date / 研究基準日",
+          "text": "Age reference date / 年齢基準日",
           "type": "date",
-          "required": true
+          "required": true,
+          "mappingNote": "Age-reference input only; not DM.RFSTDTC (Subject Reference Start Date/Time) or VS.VSDTC (vital signs collection date/time)."
         },
         {
           "linkId": "sex",
           "text": "Sex as collected / 性別",
-          "type": "string"
+          "type": "choice",
+          "sdtmTarget": "SEX.SEX",
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/questionnaire-itemControl",
+              "valueCodeableConcept": {
+                "coding": [
+                  {
+                    "code": "drop-down"
+                  }
+                ]
+              }
+            }
+          ],
+          "answerOption": [
+            {
+              "valueCoding": {
+                "code": "F",
+                "display": "F / Female / 女性"
+              }
+            },
+            {
+              "valueCoding": {
+                "code": "INTERSEX",
+                "display": "INTERSEX / Intersex / インターセックス"
+              }
+            },
+            {
+              "valueCoding": {
+                "code": "M",
+                "display": "M / Male / 男性"
+              }
+            },
+            {
+              "valueCoding": {
+                "code": "U",
+                "display": "U / Unknown / 不明"
+              }
+            }
+          ]
         }
       ],
       "mappingIntent": {
@@ -102,7 +155,8 @@
           },
           "maxValue": {
             "value": 200
-          }
+          },
+          "sdtmTarget": "DIABP.VSORRES"
         },
         {
           "linkId": "pulse",
@@ -113,12 +167,14 @@
           },
           "maxValue": {
             "value": 250
-          }
+          },
+          "sdtmTarget": "PULSE.VSORRES"
         },
         {
           "linkId": "notes",
           "text": "Measurement notes / 測定メモ",
-          "type": "text"
+          "type": "text",
+          "mappingNotMappedReason": "Demonstration-only free text; no submission variable or link to an individual vital signs record has been specified."
         }
       ]
     }

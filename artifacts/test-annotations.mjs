@@ -7,10 +7,10 @@ const test = (name, run) => { run(); checks++; console.log(`PASS ${name}`); };
 const q = structuredClone(baselineDemo);
 test('direct SYSBP and multi-input derived AGE semantics', () => {
  const p = parseAnnotations(q);
- assert.equal(p.annotations.length,3); assert.deepEqual(p.warnings,[]);
- assert.match(p.annotations.find(a=>a.kind==='Direct').text,/VS\.VSORRES.*VSTESTCD=SYSBP/);
- for(const id of ['birth-date','reference-date']) assert.match(p.annotations.find(a=>a.linkId===id).text,/used to derive DM\.AGE/);
- assert.equal(p.raw,q); assert.equal(p.annotations[0].raw,q.item[1].mappingIntent);
+ assert.equal(p.annotations.filter(a=>a.kind==='Direct').length,7); assert.deepEqual(p.warnings,[]);
+ assert.match(p.annotations.find(a=>a.linkId==='systolic-bp'&&a.kind==='Direct').text,/VS\.VSORRES.*VSTESTCD=SYSBP/);
+ for(const id of ['birth-date','reference-date']) assert.match(p.annotations.find(a=>a.linkId===id&&a.kind==='Derived').text,/used to derive DM\.AGE/);
+ assert.equal(p.raw,q); assert.equal(p.annotations.find(a=>a.linkId==='birth-date'&&a.kind==='Derived').raw,q.item[1].mappingIntent);
 });
 test('missing references and duplicate identifiers warn without throwing', () => {
  const bad=structuredClone(q); bad.item[1].mappingIntent.inputs.push({linkId:'missing',role:'referenceDate'});
@@ -74,8 +74,34 @@ test('annotations never leak into QuestionnaireResponse or mutate definition', (
  const models=items=>items.map(n=>({...n,children:models(n.item??[])}));
  const response=buildQuestionnaireResponse(q,models(q.item),{'birth-date':'1970-01-01','reference-date':'2026-10-19','systolic-bp':132},()=>true);
  const text=JSON.stringify(response);
- for(const field of ['mappingIntent','derivationDescription','sdtmTarget','cdiscConcept','birthDate','referenceDate']) assert.ok(!text.includes(field),field);
+ for(const field of ['mappingIntent','derivationDescription','sdtmTarget','sdtmVariableTarget','mappingNotMappedReason','mappingNote','cdiscConcept','birthDate','referenceDate']) assert.ok(!text.includes(field),field);
  assert.ok(!text.includes('AGE.AGE')); assert.ok(!text.includes('SYSBP.VSORRES'));
  parseAnnotations(q);annotatedCrfHtml(q);assert.equal(JSON.stringify(q),before);
+});
+test('all nine demo data-entry fields have visible mapping coverage', () => {
+ const p=parseAnnotations(q);
+ const flatten=items=>items.flatMap(n=>n.type==='group'?flatten(n.item??[]):[n]);
+ const fields=flatten(q.item);assert.equal(fields.length,9);
+ const html=annotatedCrfHtml(q);
+ for(const n of fields){
+  const a=p.annotations.filter(a=>a.linkId===n.linkId&&a.kind!=='Note');assert.ok(a.length,n.linkId);
+  const article=html.split('<article class="field">').find(s=>s.includes(`<small>${n.linkId} ·`));
+  assert.ok(article,n.linkId);assert.match(article.split('</article>')[0],/class="annotation"/);
+ }
+ for(const [id,target] of [['sex','DM.SEX'],['study-id','DM.STUDYID'],['participant-id','DM.SUBJID'],['birth-date','DM.BRTHDTC']]) assert.ok(p.annotations.some(a=>a.linkId===id&&a.kind==='Direct'&&a.text.includes(target)),id);
+ for(const [id,testcd] of [['pulse','PULSE'],['diastolic-bp','DIABP'],['systolic-bp','SYSBP']]) assert.ok(p.annotations.some(a=>a.linkId===id&&a.kind==='Direct'&&a.text.includes('VS.VSORRES')&&a.text.includes('VSTESTCD='+testcd)),id);
+ assert.ok(p.annotations.some(a=>a.linkId==='notes'&&a.kind==='Not mapped'&&a.text.includes('free text')));
+ assert.ok(!p.annotations.some(a=>a.kind==='Direct'&&a.text.includes('DM.USUBJID')));
+ assert.ok(p.annotations.some(a=>a.linkId==='reference-date'&&a.kind==='Note'&&a.text.includes('not DM.RFSTDTC')));
+});
+test('unannotated and note-only inputs never silently omit a mapping status', () => {
+ const q={item:[{linkId:'unknown',type:'string'},{linkId:'note-only',type:'integer',mappingNote:'Requires review'}]};
+ for(const id of ['unknown','note-only']) assert.ok(parseAnnotations(q).annotations.some(a=>a.linkId===id&&a.kind==='Not mapped'));
+ assert.match(annotatedCrfHtml(q),/No mapping intent has been specified/);
+});
+test('identifier and unmapped metadata remain escaped inert text', () => {
+ const q={item:[{linkId:'id',type:'string',sdtmVariableTarget:{domain:'DM',variable:'SUBJID'},mappingNote:'<script>globalThis.pwned=1</script>'},{linkId:'memo',type:'text',mappingNotMappedReason:'<img src=x onerror="globalThis.pwned=1">'}]};
+ const html=annotatedCrfHtml(q);assert.ok(!html.includes('<script>'));assert.ok(!html.includes('<img'));assert.equal(globalThis.pwned,undefined);
+ assert.match(parseAnnotations({item:[{linkId:'bad',type:'string',sdtmTarget:'DM.STUDYID'}]}).annotations[0].text,/Unresolved target/);
 });
 console.log(`${checks} focused checks passed`);
