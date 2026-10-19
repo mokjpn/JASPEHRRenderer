@@ -3,6 +3,57 @@
   "id": "synthetic-baseline-bp-concept",
   "status": "draft",
   "annotationPlan": "concept",
+  "contained": [
+    {
+      "resourceType": "ValueSet",
+      "id": "demo-sex-values",
+      "url": "https://example.org/jaspehr-demo/ValueSet/cdisc-sex",
+      "version": "2025-03-28-demo-1",
+      "name": "DemoCdiscSexFull20250328",
+      "status": "draft",
+      "experimental": true,
+      "description": "Full C66731 SEX codelist, CT 2025-03-28: F, INTERSEX, M, U. Prototype example.org canonical, not an official CDISC canonical. Manually verified source rows; expansion generated locally from the companion prototype CodeSystem. Contained answerValueSet is an extension demo beyond the currently recommended JASPEHR answerOption route.",
+      "compose": {
+        "include": [
+          {
+            "system": "https://example.org/jaspehr-demo/CodeSystem/cdisc-sex",
+            "version": "2025-03-28"
+          }
+        ]
+      },
+      "expansion": {
+        "identifier": "urn:uuid:970a8005-1835-4427-ab82-5e54714bb555",
+        "timestamp": "2026-10-19T07:57:09.227884Z",
+        "total": 4,
+        "contains": [
+          {
+            "system": "https://example.org/jaspehr-demo/CodeSystem/cdisc-sex",
+            "version": "2025-03-28",
+            "code": "F",
+            "display": "Female"
+          },
+          {
+            "system": "https://example.org/jaspehr-demo/CodeSystem/cdisc-sex",
+            "version": "2025-03-28",
+            "code": "INTERSEX",
+            "display": "Intersex"
+          },
+          {
+            "system": "https://example.org/jaspehr-demo/CodeSystem/cdisc-sex",
+            "version": "2025-03-28",
+            "code": "M",
+            "display": "Male"
+          },
+          {
+            "system": "https://example.org/jaspehr-demo/CodeSystem/cdisc-sex",
+            "version": "2025-03-28",
+            "code": "U",
+            "display": "Unknown"
+          }
+        ]
+      }
+    }
+  ],
   "title": "Baseline blood-pressure study / 血圧研究・ベースライン",
   "description": "Original synthetic demonstration; no real patient data. Experimental authoring annotations, not standard JASPEHR or a finalized FHIR extension.",
   "item": [
@@ -21,7 +72,7 @@
               "valueString": "SYN-BP-001"
             }
           ],
-          "conceptNotMappedReason": "No suitable study-identifier BC + DEC pair verified for this demo; base DM.STUDYID mapping is an explicit exception."
+          "conceptNotMappedReason": "Official Identifier BCs exist, but no study-specific BC + DEC to DM.STUDYID correspondence was verified in the pinned COSMoS catalog. This is a catalog/context gap, not a BC modeling limitation; the independent CRF map supplies DM.STUDYID."
         },
         {
           "linkId": "participant-id",
@@ -34,7 +85,7 @@
             }
           ],
           "mappingNote": "Unique within this study only. DM.USUBJID (Unique Subject Identifier across studies) requires sponsor-managed identity resolution; this demo does not derive it.",
-          "conceptNotMappedReason": "No suitable study-local subject-identifier BC + DEC pair verified for this demo; base DM.SUBJID mapping is an explicit exception, not USUBJID."
+          "conceptNotMappedReason": "Official Identifier BCs exist, but no study-local subject BC + DEC to DM.SUBJID correspondence was verified in the pinned catalog. The independent CRF map supplies DM.SUBJID, not USUBJID; this does not mean identifiers cannot be modeled with BCs."
         }
       ]
     },
@@ -50,7 +101,7 @@
           "required": true,
           "cdiscConcept": {
             "bc": "C83217",
-            "dec": "C70856"
+            "dec": "C82515"
           }
         },
         {
@@ -77,32 +128,7 @@
               }
             }
           ],
-          "answerOption": [
-            {
-              "valueCoding": {
-                "code": "F",
-                "display": "F / Female / 女性"
-              }
-            },
-            {
-              "valueCoding": {
-                "code": "INTERSEX",
-                "display": "INTERSEX / Intersex / インターセックス"
-              }
-            },
-            {
-              "valueCoding": {
-                "code": "M",
-                "display": "M / Male / 男性"
-              }
-            },
-            {
-              "valueCoding": {
-                "code": "U",
-                "display": "U / Unknown / 不明"
-              }
-            }
-          ],
+          "answerValueSet": "#demo-sex-values",
           "cdiscConcept": {
             "bc": "C28421",
             "dec": "C28421"
@@ -215,10 +241,7 @@
       {
         "linkId": "birth-date",
         "target": {
-          "sdtmVariableTarget": {
-            "domain": "DM",
-            "variable": "BRTHDTC"
-          }
+          "sdtmTarget": "BRTHDTC.BRTHDTC"
         }
       },
       {

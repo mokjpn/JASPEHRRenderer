@@ -1,0 +1,37 @@
+{
+  "release": "2025-03-28",
+  "codelist": "C66731",
+  "submissionValue": "SEX",
+  "coverage": "Full four-member non-extensible codelist, not a subset",
+  "url": "https://evs.nci.nih.gov/ftp1/CDISC/SDTM/Archive/SDTM%20Terminology%202025-03-28.pdf",
+  "page": 1396,
+  "terms": [
+    {
+      "code": "F",
+      "display": "Female",
+      "nciCode": "C16576"
+    },
+    {
+      "code": "INTERSEX",
+      "display": "Intersex",
+      "nciCode": "C45908"
+    },
+    {
+      "code": "M",
+      "display": "Male",
+      "nciCode": "C20197"
+    },
+    {
+      "code": "U",
+      "display": "Unknown",
+      "nciCode": "C17998"
+    }
+  ],
+  "localTermsSha256": "52c4e4ac89fcbdc06ec35195e2a76c971392f372293a287811bfe871d99c3337",
+  "localTermsHashNote": "SHA-256 of UTF-8 JSON.stringify(terms), not a hash of the original official PDF.",
+  "sourceFileSha256": null,
+  "sourceFileHashNote": "Full source PDF was read through the web PDF parser, not downloaded into this workspace; no original-file SHA-256 is claimed.",
+  "localValueSetVersion": "2025-03-28-demo-1",
+  "localCodeSystemVersion": "2025-03-28",
+  "expansionGeneration": "Deterministic map of manually checked full source rows into CodeSystem concepts, then expansion.contains with identical code/display/system/CodeSystem version. This is not an executed CDISCCT2ValueSet conversion."
+}

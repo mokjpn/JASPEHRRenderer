@@ -37,7 +37,8 @@ button('QuestionnaireResponse を生成').click();
 const response=JSON.parse(d.querySelector('#qr-preview').textContent);
 assert.equal(response.item[0].item[0].answer[0].valueString,'SYN-BP-001');
 assert.ok(JSON.stringify(response).includes('1970-01-01'));
-assert.equal(response.item[1].item.find(i=>i.linkId==='sex').answer[0].valueCoding.code,'M');
+const sexCoding=response.item[1].item.find(i=>i.linkId==='sex').answer[0].valueCoding;
+assert.equal(sexCoding.code,'M');assert.equal(sexCoding.system,'https://example.org/jaspehr-demo/CodeSystem/cdisc-sex');assert.equal(sexCoding.version,'2025-03-28');assert.equal(sexCoding.display,'Male');
 for(const name of ['sdtmTarget','sdtmVariableTarget','mappingNotMappedReason','mappingNote','mappingIntent']) assert.ok(!JSON.stringify(response).includes(name));
 button('Annotated CRF preview').click();
 let html=d.querySelector('iframe').srcdoc;
@@ -87,3 +88,43 @@ cd.querySelector('#target').click();assert.ok(!cd.querySelector('iframe').srcdoc
 cd.querySelector('#concept').click();assert.ok(cd.querySelector('iframe').srcdoc.includes('Separate explicit CRF mapping'));
 comparison.window.close();
 console.log('PASS standalone comparison HTML toggles Plan 1 and Plan 2 without a network request');
+
+// Invalid restored answers must show errors and block both downloads and copy.
+for(const [label,mutate,expected] of [
+ ['wrong version',(q,state)=>{state.sex={system:'https://example.org/jaspehr-demo/CodeSystem/cdisc-sex',version:'2025-03-28-demo-1',code:'M'}},'outside the contained ValueSet'],
+ ['missing ValueSet',(q,state)=>{q.contained=[]},'reference'],
+ ['que-4',(q,state)=>{q.item[1].item.find(n=>n.linkId==='sex').answerOption=[{valueCoding:{code:'M'}}]},'que-4'],
+ ['compose-only',(q,state)=>{delete q.contained[0].expansion},'compose-only'],
+ ['external URL',(q,state)=>{q.item[1].item.find(n=>n.linkId==='sex').answerValueSet='https://example.org/unavailable'},'external resolution is disabled']
+]){
+ const q=JSON.parse(readFileSync('artifacts/baseline-bp-questionnaire.json','utf8'));const state={};mutate(q,state);
+ const testDom=new JSDOM('<div id="app"></div>',{url:'https://offline.test',runScripts:'outside-only',pretendToBeVisual:true});const tw=testDom.window;
+ let downloads=0,copies=0,network=0;const alerts=[];
+ tw.localStorage.setItem('jaspehr.q',JSON.stringify(q));tw.localStorage.setItem('jaspehr.state',JSON.stringify(state));
+ tw.alert=m=>alerts.push(m);tw.fetch=()=>{network++;return Promise.reject(new Error('No networking allowed'))};
+ tw.URL.createObjectURL=()=>{downloads++;return 'blob:test'};tw.URL.revokeObjectURL=()=>{};
+ Object.defineProperty(tw.navigator,'clipboard',{value:{writeText:async()=>{copies++}}});
+ tw.eval(readFileSync('dist/'+asset,'utf8'));const td=tw.document;
+ assert.ok(td.querySelector('#right').textContent.includes(expected),label+' '+td.querySelector('#right').textContent);
+ const btn=t=>[...td.querySelectorAll('button')].find(b=>b.textContent.includes(t));
+ btn('QuestionnaireResponse を生成').click();btn('QRをコピー').click();
+ assert.ok(alerts.length===2,label);assert.equal(downloads,0,label);assert.equal(copies,0,label);assert.equal(network,0,label);
+ if(label==='wrong version')assert.equal(td.querySelector('#item-sex select').value,'');
+ else assert.equal(td.querySelector('#item-sex select').disabled,true);
+ testDom.window.close();
+}
+console.log('PASS offline ValueSet UI: wrong-version restored answers, missing/compose-only/external references and que-4 visibly fail; download/copy blocked; zero network calls');
+for(const validVersion of [true,false]){
+ const q=JSON.parse(readFileSync('artifacts/baseline-bp-questionnaire.json','utf8'));
+ const sex=q.item[1].item.find(n=>n.linkId==='sex');
+ sex.initial=[{valueCoding:{system:'https://example.org/jaspehr-demo/CodeSystem/cdisc-sex',version:validVersion?'2025-03-28':'old-version',code:'M',display:'Male'}}];
+ const testDom=new JSDOM('<div id="app"></div>',{url:'https://initial.test',runScripts:'outside-only',pretendToBeVisual:true});const tw=testDom.window;const alerts=[];
+ tw.alert=m=>alerts.push(m);tw.fetch=()=>Promise.reject(new Error('offline'));tw.URL.createObjectURL=()=> 'blob:initial';tw.URL.revokeObjectURL=()=>{};tw.HTMLAnchorElement.prototype.click=function(){};
+ tw.eval(readFileSync('dist/'+asset,'utf8'));const td=tw.document;
+ td.querySelector('#left textarea').value=JSON.stringify(q);const btn=s=>[...td.querySelectorAll('button')].find(b=>b.textContent.includes(s));btn('JSONを読み込み').click();
+ assert.equal(td.querySelector('#item-sex select').value,validVersion?'2':'');btn('QuestionnaireResponse を生成').click();
+ if(validVersion){assert.equal(alerts.length,0);const r=JSON.parse(td.querySelector('#qr-preview').textContent);assert.equal(r.item[1].item[0].answer[0].valueCoding.version,'2025-03-28');}
+ else{assert.ok(alerts[0].includes('outside the contained ValueSet'));assert.ok(td.querySelector('#qr-preview').textContent.includes('Preview blocked'));}
+ testDom.window.close();
+}
+console.log('PASS contained ValueSet initial.valueCoding: valid version selected and exported; invalid version remains visible and blocked');

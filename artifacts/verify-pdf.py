@@ -51,3 +51,10 @@ assert 'SYN-BP-001' not in concept_text and 'DEMO-001' not in concept_text
 assert 'No age is calculated' in concept_text
 assert '/JavaScript' not in str(concept.trailer)
 print('PASS Plan 1 PDF: four A4 pages; all nine fields, concept IDs, separate explicit mappings, exceptions and Japanese text')
+
+for label, document in [('Plan 2', r), ('Plan 1', concept)]:
+    sex_page = next(p.extract_text() for p in document.pages if 'sex · choice' in p.extract_text())
+    compact = ''.join(sex_page.split())
+    for value in ['Contained ValueSet: #demo-sex-values', 'ValueSet version 2025-03-28-demo-1', 'CodeSystem version 2025-03-28', 'https://example.org/jaspehr-demo/CodeSystem/cdisc-sex', 'F / Female', 'INTERSEX / Intersex', 'M / Male', 'U / Unknown']:
+        assert ''.join(value.split()) in compact, (label, value)
+print('PASS PDF contained ValueSet: all four permitted codes/displays, local system, distinct ValueSet and CodeSystem versions on both sex fields')

@@ -28,7 +28,7 @@
 | 拡張期血圧の結果 | C25299 | C70856 |
 | 脈拍の結果 | C49676 | C70856 |
 | 性別 | C28421 | C28421 |
-| 生年月日 | C83217 | C70856 |
+| 生年月日 | C83217 | C82515 |
 | 導出される年齢 | C69260 | C170981 |
 
 [公式CDISC COSMoSの固定版BC export](https://github.com/cdisc-org/COSMoS/blob/031429b1d14823721991cd23ee88a11616686ce3/export/cdisc_biomedical_concepts_latest.csv) で各組を照合しました。revision 4のdirectConceptとderivedConceptの組を維持しています。生年月日は公式概念のdatetimeに対して本デモでは日付のみを収集し、血圧もdecimal概念に対し元のinteger入力を維持するため、完全な概念実装適合性は主張しません。公式メタデータに基づく内容は [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) の下で利用し、デモ用の表示と対応表を追加しています。
@@ -42,3 +42,7 @@
 通常・standalone両build、19件のfocused tests、DOM（Document Object Model）による切替・回答出力・比較HTMLのテスト、両PDFの文字抽出と全入力項目の注釈検査を実施。概念だけではSDTM先を推論しないこと、明示的対応表の参照欠落・重複、文字のエスケープ、非実行、QuestionnaireResponseへのメタデータ非混入も検査します。全４頁の案１PDFを目視確認しました。
 
 両見本PDFは **WeasyPrint** による生成です。Chromiumのsandbox helperの問題により、**実ブラウザの表示・直接ファイル起動・Print / Save as PDFは未検証**です。DOMテストとWeasyPrintの検証は実ブラウザ検証の代わりとはしません。ブラウザでは改頁位置が変わる場合があります。比較版はデモブランチでの配布を対象とし、mainへのマージ・デプロイは含みません。
+
+## contained ValueSetと識別子の追加確認
+
+両案の性別はcontained ValueSet参照に更新しました。固定CTの全４候補、prototype canonical、版の区別、回答の強制検証、IDをBCで表現不可能とはしない説明、生年月日DECの再確認については [CONTAINED-VALUESET.md](CONTAINED-VALUESET.md) を参照してください。新しい構成は19件の既存検査に10件のValueSet検査を加えています。

@@ -110,7 +110,7 @@ test('plan 1 uses revision 4 concept pairs and the same input controls', () => {
  for(let i=0;i<q1.length;i++)for(const key of ['linkId','text','type','required','initial','minValue','maxValue','answerOption','extension'])assert.deepEqual(q1[i][key],q2[i][key],key);
  assert.deepEqual(q1.find(n=>n.linkId==='systolic-bp').cdiscConcept,{bc:'C25298',dec:'C70856'});
  assert.deepEqual(q1.find(n=>n.linkId==='demographics').mappingIntent.output,{cdiscConcept:{bc:'C69260',dec:'C170981'}});
- for(const [id,bc,dec] of [['sex','C28421','C28421'],['pulse','C49676','C70856'],['diastolic-bp','C25299','C70856'],['birth-date','C83217','C70856']])assert.deepEqual(q1.find(n=>n.linkId===id).cdiscConcept,{bc,dec});
+ for(const [id,bc,dec] of [['sex','C28421','C28421'],['pulse','C49676','C70856'],['diastolic-bp','C25299','C70856'],['birth-date','C83217','C82515']])assert.deepEqual(q1.find(n=>n.linkId===id).cdiscConcept,{bc,dec});
  for(const n of q1){assert.equal(n.sdtmTarget,undefined);assert.equal(n.sdtmVariableTarget,undefined);}
  for(const id of ['study-id','participant-id','reference-date','notes'])assert.ok(q1.find(n=>n.linkId===id).conceptNotMappedReason,id);
 });

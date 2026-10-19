@@ -22,10 +22,7 @@
     {
       "linkId": "birth-date",
       "target": {
-        "sdtmVariableTarget": {
-          "domain": "DM",
-          "variable": "BRTHDTC"
-        }
+        "sdtmTarget": "BRTHDTC.BRTHDTC"
       }
     },
     {

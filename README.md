@@ -73,3 +73,7 @@ The supplied three-page PDF was generated separately using **WeasyPrint**, and i
 Use **Load Plan 1: BC + DEC / 案１** to compare Biomedical Concept and Data Element Concept authoring with the existing Plan 2 demo. Both use identical input controls; switching resets answers. Plan 1 keeps the proposed concept annotations separate from an explicit experimental `crfMapping` for SDTM display. It never infers a unique SDTM variable from a concept pair. Identifier exceptions and every unmapped field are labeled.
 
 See [comparison notes and both sets of JSON/HTML/PDF](artifacts/COMPARISON.md), or download [comparison.html](artifacts/comparison.html) for a self-contained annotation comparison. The two sample PDFs use WeasyPrint; actual browser printing remains unverified.
+
+### Contained ValueSet extension demo / 内蔵ValueSet
+
+Both plans bind sex to a contained, pre-expanded ValueSet with all four members of the fixed CDISC CT 2025-03-28 C66731 codelist. Answer code, system and CodeSystem version are validated before response export; no terminology server or arbitrary URL resolution is used. The example.org system is a local prototype, not an official CDISC canonical. See [details, identifier clarification and test scope](artifacts/CONTAINED-VALUESET.md).

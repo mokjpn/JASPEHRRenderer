@@ -1,7 +1,7 @@
 import "./style.css";
 import * as fhirpath from "fhirpath";
 import { buildQuestionnaireResponse, type Answer, type Coding, type ItemModel, type Primitive, type RenderState } from "./buildQuestionnaireResponse";
-import { baselineDemo, conceptDemo, annotatedCrfHtml, exactExtension } from "./buildQuestionnaireResponse";
+import { baselineDemo, conceptDemo, annotatedCrfHtml, exactExtension, resolveChoiceOptions, validateBoundChoice, codingMatches } from "./buildQuestionnaireResponse";
 import sampleQuestionnaireText from "./sample-questionnaire.json?raw";
 
 type ItemType =
@@ -29,6 +29,9 @@ type AppItemModel = ItemModel & {
   max?: number;
   regex?: string;
   options: Coding[];
+  answerValueSet?: string;
+  optionErrors: string[];
+  optionSource?: string;
   control?: "radio" | "checkbox" | "dropdown" | "gtable";
   enableWhen?: Array<{
     question: string;
@@ -130,6 +133,7 @@ function buildModel(items: any[] = [], parent = ""): AppItemModel[] {
     const initialExpr = getExt(it, EXT.initialExpression)?.valueExpression;
     const calcExpr = getExt(it, EXT.calculatedExpression)?.valueExpression;
     const regexExt = getExt(it, EXT.regex);
+    const choice = resolveChoiceOptions(questionnaire, it);
 
     const model: AppItemModel = {
       linkId: it.linkId,
@@ -142,9 +146,10 @@ function buildModel(items: any[] = [], parent = ""): AppItemModel[] {
       max: parseMinMax(it, "maxValue"),
       regex: regexExt?.valueString,
       control: mapControl(it),
-      options: (it.answerOption || [])
-        .map((o: any) => o.valueCoding)
-        .filter((x: any) => !!x),
+      options: choice.options,
+      answerValueSet: it.answerValueSet,
+      optionErrors: choice.errors,
+      optionSource: choice.source,
       enableWhen: it.enableWhen,
       enableBehavior: it.enableBehavior,
       initial: it.initial?.[0],
@@ -175,6 +180,7 @@ function validateQuestionnaireRules(
       seenLinkIds.add(n.linkId);
     }
 
+    for (const message of n.optionErrors) out.push({ linkId: n.linkId, message });
     if (n.type === "choice" && !n.control) {
       out.push({ linkId: n.linkId, message: "jsp-6: choice には itemControl が必須です。" });
     }
@@ -287,6 +293,7 @@ function assignInitialValues(nodes: AppItemModel[]) {
     const iv: any = n.initial;
     if (iv) {
       const v =
+        iv.valueCoding ??
         iv.valueString ??
         iv.valueInteger ??
         iv.valueDecimal ??
@@ -374,6 +381,10 @@ function validateInputs(nodes: AppItemModel[], out: ValidationErr[] = []): Valid
       out.push({ linkId: n.linkId, message: "必須項目です。" });
     }
 
+    if (n.answerValueSet !== undefined) {
+      const message = validateBoundChoice({ options: n.options, errors: [], multiple: n.repeats === true }, v);
+      if (message) out.push({ linkId: n.linkId, message });
+    }
     if ((n.type === "integer" || n.type === "decimal") && !empty) {
       const num = extractNum(v);
       if (num === null) {
@@ -425,6 +436,7 @@ function rerenderCenterPreservingFocus() {
   target?.focus();
 }
 function renderInput(container: HTMLElement, n: AppItemModel, enabled: boolean) {
+  const choiceEq = (a: Coding | undefined, b: Coding) => n.answerValueSet !== undefined ? codingMatches(a, b) : codingEq(a, b);
   const id = `item-${n.linkId}`;
   const wrap = document.createElement("div");
   wrap.className = "item" + (enabled ? "" : " hidden");
@@ -437,7 +449,7 @@ function renderInput(container: HTMLElement, n: AppItemModel, enabled: boolean) 
 
   const help = document.createElement("div");
   help.className = "help";
-  help.textContent = `linkId: ${n.linkId}`;
+  help.textContent = `linkId: ${n.linkId}${n.optionSource ? " · " + n.optionSource : ""}`;
   wrap.appendChild(help);
 
   const value = state[n.linkId];
@@ -465,8 +477,8 @@ function renderInput(container: HTMLElement, n: AppItemModel, enabled: boolean) 
         const inp = document.createElement("input");
         inp.type = "radio";
         inp.name = n.linkId;
-        inp.disabled = !enabled || !!n.readOnly;
-        inp.checked = codingEq(value as Coding, opt);
+        inp.disabled = !enabled || n.optionErrors.length > 0 || !!n.readOnly;
+        inp.checked = choiceEq(value as Coding, opt);
         inp.dataset.focusKey = n.linkId;
         inp.onchange = () => onChange(opt);
         l.append(inp, document.createTextNode(" " + getOptionLabel(opt)));
@@ -479,11 +491,11 @@ function renderInput(container: HTMLElement, n: AppItemModel, enabled: boolean) 
         l.className = "field";
         const inp = document.createElement("input");
         inp.type = "checkbox";
-        inp.disabled = !enabled || !!n.readOnly;
-        inp.checked = current.some((c) => codingEq(c, opt));
+        inp.disabled = !enabled || n.optionErrors.length > 0 || !!n.readOnly;
+        inp.checked = current.some((c) => choiceEq(c, opt));
         inp.dataset.focusKey = n.linkId;
         inp.onchange = () => {
-          const next = current.filter((c) => !codingEq(c, opt));
+          const next = current.filter((c) => !choiceEq(c, opt));
           if (inp.checked) next.push(opt);
           onChange(next);
         };
@@ -492,7 +504,7 @@ function renderInput(container: HTMLElement, n: AppItemModel, enabled: boolean) 
       }
     } else {
       const sel = document.createElement("select");
-      sel.disabled = !enabled || !!n.readOnly;
+      sel.disabled = !enabled || n.optionErrors.length > 0 || !!n.readOnly;
       const empty = document.createElement("option");
       empty.value = "";
       empty.textContent = "-- select --";
@@ -500,8 +512,8 @@ function renderInput(container: HTMLElement, n: AppItemModel, enabled: boolean) 
       n.options.forEach((opt, idx) => {
         const o = document.createElement("option");
         o.value = String(idx);
-        o.textContent = getOptionLabel(opt);
-        if (codingEq(value as Coding, opt)) o.selected = true;
+        o.textContent = n.answerValueSet ? `${getOptionLabel(opt)} [${opt.code}]` : getOptionLabel(opt);
+        if (choiceEq(value as Coding, opt)) o.selected = true;
         sel.appendChild(o);
       });
       sel.dataset.focusKey = n.linkId;
@@ -515,7 +527,7 @@ function renderInput(container: HTMLElement, n: AppItemModel, enabled: boolean) 
     const inp = document.createElement("input");
     inp.type = "checkbox";
     inp.checked = !!value;
-    inp.disabled = !enabled || !!n.readOnly;
+    inp.disabled = !enabled || n.optionErrors.length > 0 || !!n.readOnly;
     inp.dataset.focusKey = n.linkId;
     inp.onchange = () => onChange(inp.checked);
     wrap.appendChild(inp);
@@ -544,7 +556,7 @@ function renderInput(container: HTMLElement, n: AppItemModel, enabled: boolean) 
     const commitHard = () => updateState(textInput.value, true, "hard");
 
     textInput.dataset.focusKey = n.linkId;
-    textInput.disabled = !enabled || !!n.readOnly;
+    textInput.disabled = !enabled || n.optionErrors.length > 0 || !!n.readOnly;
     textInput.value = value == null ? "" : String(value);
     textInput.addEventListener("compositionstart", () => {
       composing = true;
@@ -779,11 +791,16 @@ function renderCenter() {
   const row = document.createElement("div");
   row.className = "row";
 
+  const createResponse = () => {
+    try { return buildQuestionnaireResponse(questionnaire, modelRoot, state, (node, st) => isEnabled(node as AppItemModel, st)); }
+    catch (e) { alert(`QuestionnaireResponse blocked: ${(e as Error).message}`); return null; }
+  };
   const outBtn = document.createElement("button");
   outBtn.className = "primary";
   outBtn.textContent = "QuestionnaireResponse を生成";
   outBtn.onclick = () => {
-    const qr = buildQuestionnaireResponse(questionnaire, modelRoot, state, (node, st) => isEnabled(node as AppItemModel, st));
+    const qr = createResponse();
+    if (!qr) return;
     const qrText = JSON.stringify(qr, null, 2);
     (document.getElementById("qr-preview") as HTMLPreElement).textContent = qrText;
     const blob = new Blob([qrText], { type: "application/json" });
@@ -799,7 +816,8 @@ function renderCenter() {
   const copyBtn = document.createElement("button");
   copyBtn.textContent = "QRをコピー";
   copyBtn.onclick = async () => {
-    const qr = buildQuestionnaireResponse(questionnaire, modelRoot, state, (node, st) => isEnabled(node as AppItemModel, st));
+    const qr = createResponse();
+    if (!qr) return;
     await navigator.clipboard.writeText(JSON.stringify(qr, null, 2));
   };
   row.appendChild(copyBtn);
@@ -843,11 +861,13 @@ function renderRight() {
   const qrPre = document.createElement("pre");
   qrPre.id = "qr-preview";
   if (questionnaire) {
+    try {
     qrPre.textContent = JSON.stringify(
       buildQuestionnaireResponse(questionnaire, modelRoot, state, (node, st) => isEnabled(node as AppItemModel, st)),
       null,
       2
     );
+    } catch (e) { qrPre.textContent = `Preview blocked: ${(e as Error).message}`; }
   }
   right.appendChild(qrPre);
 }

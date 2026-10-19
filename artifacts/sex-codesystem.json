@@ -1,0 +1,62 @@
+{
+  "resourceType": "CodeSystem",
+  "id": "demo-sex-codes",
+  "url": "https://example.org/jaspehr-demo/CodeSystem/cdisc-sex",
+  "version": "2025-03-28",
+  "name": "DemoCdiscSex",
+  "status": "draft",
+  "experimental": true,
+  "caseSensitive": true,
+  "content": "complete",
+  "count": 4,
+  "description": "Local prototype canonical, NOT an official CDISC or NCIt canonical. Codes are CDISC Submission Values from the full C66731 codelist in CT 2025-03-28; NCIt codes are separate properties.",
+  "property": [
+    {
+      "code": "ncit-code",
+      "type": "code",
+      "description": "NCI Thesaurus concept identifier; not the Coding.code in this prototype CodeSystem."
+    }
+  ],
+  "concept": [
+    {
+      "code": "F",
+      "display": "Female",
+      "property": [
+        {
+          "code": "ncit-code",
+          "valueCode": "C16576"
+        }
+      ]
+    },
+    {
+      "code": "INTERSEX",
+      "display": "Intersex",
+      "property": [
+        {
+          "code": "ncit-code",
+          "valueCode": "C45908"
+        }
+      ]
+    },
+    {
+      "code": "M",
+      "display": "Male",
+      "property": [
+        {
+          "code": "ncit-code",
+          "valueCode": "C20197"
+        }
+      ]
+    },
+    {
+      "code": "U",
+      "display": "Unknown",
+      "property": [
+        {
+          "code": "ncit-code",
+          "valueCode": "C17998"
+        }
+      ]
+    }
+  ]
+}

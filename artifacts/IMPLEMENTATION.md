@@ -33,7 +33,7 @@ All nine demo data-entry fields now have an adjacent mapping annotation or an ex
 | --- | --- | --- |
 | Study identifier | Base variable `DM.STUDYID` | Identifies this study; not a subject identifier. |
 | Study-local subject identifier | Base variable `DM.SUBJID` | Unique within the study. It is not `DM.USUBJID`. |
-| Birth date | Base variable `DM.BRTHDTC`, and input to derived `DM.AGE` | The birth date is collected directly; its use in AGE derivation is a separate annotation. |
+| Birth date | `BRTHDTC.BRTHDTC` specialization → `DM.BRTHDTC`, and input to derived `DM.AGE` | The birth date is collected directly; its use in AGE derivation is a separate annotation. |
 | Age reference date | Input to derived `DM.AGE` | Age-reference only; no direct `DM.RFSTDTC` or `VS.VSDTC` mapping is claimed. |
 | Sex as collected | `SEX.SEX` specialization → `DM.SEX` | Choice codes `F`, `INTERSEX`, `M`, `U`, from SEX codelist `C66731` in the pinned metadata. |
 | Systolic pressure | `SYSBP.VSORRES` → `VS.VSORRES` | `VSTESTCD=SYSBP`, label unit mmHg. |
@@ -43,7 +43,7 @@ All nine demo data-entry fields now have an adjacent mapping annotation or an ex
 
 No unique subject identifier is generated. `DM.USUBJID` identifies a subject across studies/applications/submissions involving the product and requires sponsor-managed identity resolution. Merely relabeling `SUBJID` or concatenating two fields is not asserted to satisfy that requirement. There is no USUBJID derivation in this demo; consequently no speculative identifier `mappingIntent` is added.
 
-The original revision 4 `sdtmTarget` notation remains reserved for **specialization ID + variable**. The additional local authoring attribute `sdtmVariableTarget: { "domain": "DM", "variable": "STUDYID" }` represents a base SDTM variable without asserting an official specialization ID; `SUBJID` and `BRTHDTC` use the same distinct representation. `mappingNote` and `mappingNotMappedReason` are additional inert local authoring text attributes. These companion attributes are experimental demo conventions, not additions claimed to be in the original proposal or a FHIR/JASPEHR standard. The raw JSON preserves them; QuestionnaireResponse does not copy them.
+The original revision 4 `sdtmTarget` notation remains reserved for **specialization ID + variable**. The additional local authoring attribute `sdtmVariableTarget: { "domain": "DM", "variable": "STUDYID" }` represents a base SDTM variable without asserting an official specialization ID; `SUBJID` uses the same distinct representation. The current birth-date demo uses the independently verified official BRTHDTC specialization; the parser retains the older base-variable representation for compatibility. `mappingNote` and `mappingNotMappedReason` are additional inert local authoring text attributes. These companion attributes are experimental demo conventions, not additions claimed to be in the original proposal or a FHIR/JASPEHR standard. The raw JSON preserves them; QuestionnaireResponse does not copy them.
 
 Official metadata was checked on 2026-10-19. The CDISC Conceptual and Operational Standards Metadata Services (COSMoS) source is pinned to commit `031429b1d14823721991cd23ee88a11616686ce3`:
 
@@ -75,6 +75,7 @@ npm run build:standalone
 npx tsc src/buildQuestionnaireResponse.ts --target ES2022 --module ES2022 --outDir /tmp/jaspehr-test --skipLibCheck
 cp /tmp/jaspehr-test/buildQuestionnaireResponse.js /tmp/jaspehr-test/buildQuestionnaireResponse.mjs
 node artifacts/test-annotations.mjs /tmp/jaspehr-test/buildQuestionnaireResponse.mjs
+node artifacts/test-valueset.mjs /tmp/jaspehr-test/buildQuestionnaireResponse.mjs
 npm install --prefix /tmp/jaspehr-ui --cache /tmp/jaspehr-npm-cache jsdom --no-audit --no-fund
 node artifacts/test-ui.mjs
 node artifacts/generate-samples.mjs /tmp/jaspehr-test/buildQuestionnaireResponse.mjs
@@ -104,3 +105,7 @@ The field-coverage correction adds tests for all nine adjacent annotations, base
 See [COMPARISON.md](COMPARISON.md) for the same-field Plan 1/Plan 2 comparison, exact verified BC/DEC pairs, identifier/date-role exceptions, deliverables, and the separation between CDISC identifiers, revision 4 authoring proposals, and the additional experimental `crfMapping`. `conceptDemo` is a clone of `baselineDemo` with identical controls, direct concept annotations and concept output for age; SDTM display targets are moved into a separate explicit map. The parser never resolves a concept pair through a registry. Its concept-only state remains unresolved when the map is removed. Existing Plan 2 fields/targets and the original bundled sample remain available.
 
 The updated test suite has 19 focused checks, plus built-app DOM switching/answer export/coverage and a separate comparison-HTML toggle test. The generated Plan 1 PDF has four visually inspected A4 pages; Plan 2 remains three pages. Both retain blank fields and Japanese text. Re-running `generate-samples.mjs` now produces both plans, the standalone comparison HTML, and the explicit mapping JSON; `verify-pdf.py` renders and checks both sample PDFs. No runtime PDF dependency was added. Actual browser printing remains unverified. The comparison is provided on the demo branch for review and download; no merge or deployment is included.
+
+## Contained ValueSet and identifier clarification
+
+See [CONTAINED-VALUESET.md](CONTAINED-VALUESET.md). The current demos reference a contained pre-expanded ValueSet for sex rather than answerOption, preserving versioned Coding identity and blocking invalid/unresolved bound responses. The converter-style local prototype CodeSystem keeps CDISC Submission Values distinct from NCI identifiers. Official CT 2025-03-28 C66731 full membership is verified from the primary NCI PDF. The 19 existing checks and 10 new ValueSet checks plus DOM integration cover the changes. Source catalog gaps for study/local-subject IDs are explicitly distinguished from conceptual impossibility; known SDTM basic-variable mappings remain present in both plans. The official BRTHDTC specialization was rechecked, and the new demo pair uses C83217/C82515. This change is distributed on the existing demo branch; no merge or deployment is included.
